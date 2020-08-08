@@ -9,14 +9,20 @@
 #include <fstream>
 #include "uk2.hpp"
 
-int slide(int d, int i, const std::string& s1, const std::string& s2) {
+std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
+    assert (i < imax);
+    int Nc = 0;
+    int qend = std::min(s1.length(), s2.length()-d);
     // Fastest way to optimize this?
-    for (int q = i; q < std::min(s1.length(), s2.length()-d); ++q) {
-        if ((s1[q] != s2[q+d]) && (s1[q] != 'N') && (s2[q+d] != 'N')){ 
-            return q;
+    for (int q = i; q < qend; ++q) {
+        if ((s1[q] != 'N') && (s2[q+d] != 'N')){ 
+            if ((s1[q] != s2[q+d])) return std::pair<int,int>(q,Nc);
+        }
+        else {
+            Nc += 1;
         }
     }
-    return s1.length();
+    return std::pair<int,int>(imax, Nc);
 }
 
 void cerrarr(int* v, int rowsize) {
@@ -28,29 +34,33 @@ void cerrarr(int* v, int rowsize) {
 
 unsigned long long binom(unsigned int n, unsigned int k) {
     if (n == k || k == 0) return 1;
-    return C(n-1, k-1) * n/k;
+    return binom(n-1, k-1) * n/k;
 }
 
-double betap(d,M,N,k,a=1,b=1) {
+unsigned long long beta(unsigned long long u, unsigned long long v) { 
+    return std::tgammal(u)*std::tgammal(v)/std::tgamma(u+v);
+}
+
+double betap(int d, int M, int N, int k, int a=1, int b=1) {
     if (d >= k) return 0;
     double sum = 0;
     for (int z = 0; z < k; ++z) {
         unsigned long long b = binom(N,z);
-        long double numo = std::betal(z-a+d,N-z+b+M-d);
-        long double deno = std::betal(a+d, b+M-d);
+        long double numo = beta(z-a+d,N-z+b+M-d);
+        long double deno = beta(a+d, b+M-d);
     }
 } 
 
-int cal_imax(d, m, n) {
+int cal_imax(int d, int m, int n) {
     if (m >= n) return d <= 0 ? m : m-d;
     int v = n-m;
     return d <= v ? m : m-d+v;
 }
 
-std::vector<int> cal_imax_arr(m,n) {
+std::vector<int> cal_imax_arr(int m, int n) {
     std::vector<int> res;
     for (int ld = 0; ld < m+n+1; ++ld) {
-        res.push_back(cal_imax(ld-m,m,n);
+        res.push_back(cal_imax(ld-m,m,n));
     }
     return res;
 }
@@ -134,8 +144,8 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
             maxi = std::min(maxi, imax);
             int sl, mn;
             if (maxi < imax) {
-                std::pair<int,int> = slide(d, maxi, s1, s2);
-                sl = side.first; mn = slide.second;
+                std::pair<int,int> res =  slide(d, maxi, s1, s2, imax);
+                sl = res.first; mn = res.second;
                 assert (sl <= imax);
                 prev_NM += (sl-maxi);
                 prev_NN += mn;
