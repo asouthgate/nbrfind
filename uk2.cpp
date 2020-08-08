@@ -1,3 +1,5 @@
+#define __STDCPP_WANT_MATH_SPEC_FUNCS__ 1
+#include <cmath>
 #include <assert.h>
 #include <math.h>
 #include <algorithm>
@@ -23,7 +25,21 @@ void cerrarr(int* v, int rowsize) {
     }
     std::cerr << std::endl;
 }
-                   
+
+unsigned long long binom(unsigned int n, unsigned int k) {
+    if (n == k || k == 0) return 1;
+    return C(n-1, k-1) * n/k;
+}
+
+double betap(d,M,N,k,a=1,b=1) {
+    if (d >= k) return 0;
+    double sum = 0;
+    for (int z = 0; z < k; ++z) {
+        unsigned long long b = binom(N,z);
+        long double numo = std::betal(z-a+d,N-z+b+M-d);
+        long double deno = std::betal(a+d, b+M-d);
+    }
+} 
 
 bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_triple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
     int m = s1.length();
