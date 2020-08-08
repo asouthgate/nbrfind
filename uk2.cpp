@@ -25,7 +25,7 @@ void cerrarr(int* v, int rowsize) {
 }
                    
 
-void DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_triple, int* state_arr, int rowsize, bool freeze) {
+bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_triple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
     int m = s1.length();
     int n = s2.length();
     // make sure frozen not true
@@ -50,7 +50,7 @@ void DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
 //    cerrarr(M1, rowsize);
 //    cerrarr(M2, rowsize);
 
-    if (freeze && n == 0) { return; }
+    if (freeze && n == 0) { return false; }
 
     int h = h_start;
     while (h < 2*(m+n)+1) {
@@ -99,7 +99,7 @@ void DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
             if (freeze && d >= n-m) {
                 if (L2[ld] == imax) {
 //                    std::cout << "freezing" << std::endl;
-                    return;
+                    return true;
                 }
             }
             assert (M2[ld] >= 0);
@@ -124,7 +124,7 @@ void DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
 //        cerrarr(M2, rowsize);        
         if (L2[n] == m) {
 //            std::cout << "ending early at h" << " " << h << std::endl;
-            return;
+            return true;
         }
 //        L0 = L1;
 //        std::cout << "memcopying" << std::endl;
@@ -134,7 +134,7 @@ void DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
         std::memmove(M1, M2, rowsize * sizeof(L0[0]));
         h += 1;
     }
-    return;
+    return true;
 }
 
 const std::string five_prime = "ATGGAGAGCCTTGTCCCTGG";
@@ -212,7 +212,7 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
             init_state_array(state_arr, rowsize);
             init_state_triple(state_triple, p1.second.length(), p2.second.length());
             int mm_ind = 5*rowsize + p2.second.length();
-            calculate_dist(p1.second, p2.second, state_triple, state_arr, rowsize, false);
+            calculate_dist(p1.second, p2.second, state_triple, state_arr, rowsize, 5, 100, false);
             std::cout << p1.first << "," << p2.first << "," << state_triple[0] << "," << state_arr[mm_ind] << std::endl;
         }
     }

@@ -7,12 +7,12 @@
 extern "C" {
     void calculate_dist_resume_freeze(const char* a, const char* b, int* state_triple, int* state_arr, int rowsize) {
         DistCalculator dc = DistCalculator();
-        dc.calculate_dist(a, b, state_triple, state_arr, rowsize, true);
+        dc.calculate_dist(a, b, state_triple, state_arr, rowsize, 5, 100, true);
     }
 
     void calculate_dist_resume_nofreeze(const char* a, const char* b, int* state_triple, int* state_arr, int rowsize) {
         DistCalculator dc = DistCalculator();
-        dc.calculate_dist(a, b, state_triple, state_arr, rowsize, false);
+        dc.calculate_dist(a, b, state_triple, state_arr, rowsize, 5, 100, false);
     }
 }
 
