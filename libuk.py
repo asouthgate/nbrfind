@@ -10,6 +10,8 @@ lib.calculate_dist_resume_freeze.argtypes = [c_char_p, c_char_p, POINTER(c_int),
 lib.calculate_dist_resume_nofreeze.restype  = c_void_p
 lib.calculate_dist_resume_nofreeze.argtypes = [c_char_p, c_char_p, POINTER(c_int), POINTER(c_int), c_int]
 
+
+
 def uk2_cpp(s1, s2, state_triple=None, state_arr=None, freeze=False):
     if state_triple is None:
         state_triple = np.zeros(3,dtype=np.int32)
@@ -30,9 +32,10 @@ def uk2_cpp(s1, s2, state_triple=None, state_arr=None, freeze=False):
     state_arrp = state_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
     if freeze: 
         lib.calculate_dist_resume_freeze(bytes(s1,encoding='utf8'), bytes(s2,encoding='utf8'), state_triplep, state_arrp, rowsize)
+        return (state_triple[0], state_arr[5,len(s2)], state_arr[11,len(s2)], state_arr[8,len(s2)], state_triple, state_arr)
     else: 
         lib.calculate_dist_resume_nofreeze(bytes(s1,encoding='utf8'), bytes(s2,encoding='utf8'), state_triplep, state_arrp, rowsize)
-    return (state_triple[0], state_arr[5,len(s2)], state_arr[11,len(s2)], state_arr[8,len(s2)])
+        return (state_triple[0], state_arr[5,len(s2)], state_arr[11,len(s2)], state_arr[8,len(s2)])
 
 
 def get_backtrace_stats(a1,a2):
@@ -71,12 +74,20 @@ if __name__ == "__main__":
         snpdval, hval, Ltrace = uk2val.ukkonen_lev2(s1, s2, freeze=False, trace=True)
         snpdval2, hval2, NN2, M2TOT = uk2valmarr.ukkonen_lev2(s1, s2, freeze=False)
         M2 = M2TOT-NN2
-
         a1, a2 = uk2val.backtrace(Ltrace, s1, s2)
         print(a1)
         print(a2)
         d, M_N, M = get_backtrace_stats(a1,a2)
         h, snpd, mn, mtot = uk2_cpp(s1, s2)
+        #**** Also check freezing functionality
+        randk = random.randint(1, len(s2)-2)
+        hfreeze, snpdfreeze, mnfreeze, mtotfreeze, st, sa = uk2_cpp(s1, s2[:randk], freeze=True)
+        hfreeze, snpdfreeze, mnfreeze, mtotfreeze, st, sa = uk2_cpp(s1, s2, state_triple=st, state_arr = sa, freeze=False)
+        assert hfreeze == h
+        assert snpd == snpdfreeze
+        assert mn == mnfreeze
+        assert mtot == mtotfreeze
+        #****        
         m = mtot-mn
         print(h,snpd,mtot,m,mn,m)
         sys.stderr.write("testing %d\n" % j)
@@ -90,6 +101,3 @@ if __name__ == "__main__":
 #        assert m == M, (m, M)
         assert mn == M_N, (mn, M_N)
     sys.stderr.write("passed basic test..!\n")
-    with open(sys.argv[1]) as msaf:
-        
-    
