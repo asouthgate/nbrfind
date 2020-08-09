@@ -99,8 +99,8 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
     int h = h_start;
     std::vector<int> imax_arr = cal_imax_arr(m, n);
     while (h < 2*(m+n)+1) {
-//        cerrarr(NM0,rowsize); cerrarr(NM1,rowsize); cerrarr(NM2,rowsize); 
-//        std::cerr << h << std::endl;
+        cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
+        std::cerr << h << std::endl;
         state_triple[0] = h;
         int prev_lower_bound = lower_bound;
         int prev_upper_bound = upper_bound;
@@ -161,13 +161,18 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
                     
             if (freeze && d >= n-m) {
                 if (L2[ld] == imax) {
+                    std::cerr << "freezing on" << std::endl;
+                    cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
+                    state_triple[1] = prev_lower_bound;
+                    state_triple[2] = prev_upper_bound;
+                    std::memmove(L2, L1, rowsize * sizeof(L0[0]));
                     return true;
                 }
             }
 
             assert (M2[ld] >= 0);
             if (ld <= n && L2[ld] >= imax) {
-                lower_bound = d+1; state_triple[1] = d;
+                lower_bound = d+1; state_triple[1] = d+1;
                 assert (lower_bound + m >= 0);
             }
             if (ld > n && L2[ld] >= imax) {

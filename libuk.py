@@ -25,16 +25,22 @@ def uk2_cpp(s1, s2, state_triple=None, state_arr=None, freeze=False):
     rowsize = len(s1) + len(s2) + 1
     z = rowsize-prev_rowsize
     if z > 0:
+        print("RECEIVED", state_arr[:3])
         state_arr = np.append(state_arr, (np.ones((12, z))*-1).astype(np.int32), axis=1)
+        if state_triple[0] == 0:
+            state_arr[0,-z:] = -2
         state_arr[3:,-z:] = 0
-        state_triple[2] += (2*z)
+        state_triple[2] = len(s2)
+        print("INPUTTING", state_arr[:3])
     state_triplep = state_triple.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
     state_arrp = state_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
     if freeze: 
         lib.calculate_dist_resume_freeze(bytes(s1,encoding='utf8'), bytes(s2,encoding='utf8'), state_triplep, state_arrp, rowsize)
+        print(state_arr)
         return (state_triple[0], state_arr[5,len(s2)], state_arr[11,len(s2)], state_arr[8,len(s2)], state_triple, state_arr)
     else: 
         lib.calculate_dist_resume_nofreeze(bytes(s1,encoding='utf8'), bytes(s2,encoding='utf8'), state_triplep, state_arrp, rowsize)
+        print(state_arr)
         return (state_triple[0], state_arr[5,len(s2)], state_arr[11,len(s2)], state_arr[8,len(s2)])
 
 
@@ -62,9 +68,10 @@ if __name__ == "__main__":
     import ukkonen2 as uk2val
     import ukkonen2_withmarrs as uk2valmarr
     import sys
-    MINL = 20
-    MAXL = 100
+    MINL = 3
+    MAXL = 4
     for j in range(100):
+        print()
         l1 = random.randint(MINL,MAXL)
         l2 = random.randint(MINL,MAXL)
         s1 = "".join([random.choice("ACGTN") for c in range(l1)])
@@ -81,11 +88,12 @@ if __name__ == "__main__":
         h, snpd, mn, mtot = uk2_cpp(s1, s2)
         #**** Also check freezing functionality
         randk = random.randint(1, len(s2)-2)
+        print(s1,s2,randk, s2[:randk])
         hfreeze, snpdfreeze, mnfreeze, mtotfreeze, st, sa = uk2_cpp(s1, s2[:randk], freeze=True)
-        hfreeze, snpdfreeze, mnfreeze, mtotfreeze, st, sa = uk2_cpp(s1, s2, state_triple=st, state_arr = sa, freeze=False)
-        assert hfreeze == h
+        hfreeze, snpdfreeze, mnfreeze, mtotfreeze = uk2_cpp(s1, s2, state_triple=st, state_arr = sa, freeze=False)
+        assert hfreeze == h, (hfreeze, h)
         assert snpd == snpdfreeze
-        assert mn == mnfreeze
+        assert mn == mnfreeze, (mn, mnfreeze)
         assert mtot == mtotfreeze
         #****        
         m = mtot-mn
