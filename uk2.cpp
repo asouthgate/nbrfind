@@ -86,19 +86,21 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
     auto M2 = state_arr + 5*rowsize;
     // Auxiliary arrays:
     // Init NM arrays; number of match operations
-    auto NM0 = state_arr + 3*rowsize;
-    auto NM1 = state_arr + 4*rowsize;
-    auto NM2 = state_arr + 5*rowsize;
+    auto NM0 = state_arr + 6*rowsize;
+    auto NM1 = state_arr + 7*rowsize;
+    auto NM2 = state_arr + 8*rowsize;
     // Init NN arrays; number of `N' match operations
-    auto NN0 = state_arr + 3*rowsize;
-    auto NN1 = state_arr + 4*rowsize;
-    auto NN2 = state_arr + 5*rowsize;
+    auto NN0 = state_arr + 9*rowsize;
+    auto NN1 = state_arr + 10*rowsize;
+    auto NN2 = state_arr + 11*rowsize;
 
     if (freeze && n == 0) { return false; }
 
     int h = h_start;
     std::vector<int> imax_arr = cal_imax_arr(m, n);
     while (h < 2*(m+n)+1) {
+//        cerrarr(NM0,rowsize); cerrarr(NM1,rowsize); cerrarr(NM2,rowsize); 
+//        std::cerr << h << std::endl;
         state_triple[0] = h;
         int prev_lower_bound = lower_bound;
         int prev_upper_bound = upper_bound;
@@ -181,10 +183,13 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
         // TODO: memcopy? don't overlap in range
         std::memmove(L0, L1, rowsize * sizeof(L0[0]));
         std::memmove(L1, L2, rowsize * sizeof(L0[0]));
+
         std::memmove(M0, M1, rowsize * sizeof(L0[0]));
         std::memmove(M1, M2, rowsize * sizeof(L0[0]));
+
         std::memmove(NM0, NM1, rowsize * sizeof(L0[0]));
         std::memmove(NM1, NM2, rowsize * sizeof(L0[0]));
+
         std::memmove(NN0, NN1, rowsize * sizeof(L0[0]));
         std::memmove(NN1, NN2, rowsize * sizeof(L0[0]));
         h += 1;
