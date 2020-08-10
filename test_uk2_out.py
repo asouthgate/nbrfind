@@ -31,10 +31,18 @@ with open(sys.argv[2]) as f:
         mseq1 = msarecs[first].upper()
         mseq2 = msarecs[second].upper()
         h, d, NM, NN = [int(i) for i in l.split(",")[2:]]
-        valres = ukkonen_lev2(mseq1.replace("-",""),mseq2.replace("-",""))
-        evedit, evsnpd = valres[1], valres[0]
-        snpdval, NMval, NNval = get_aln_stats(mseq1, mseq2)
-        print([h, d], [snpdval], [evedit,evsnpd])
-        assert evedit == h
-        assert snpdval == d
-        
+        if h > -1:
+            valres = ukkonen_lev2(mseq1.replace("-",""),mseq2.replace("-",""))
+            evedit, evsnpd = valres[1], valres[0]
+            snpdval, NMval, NNval = get_aln_stats(mseq1, mseq2)
+            print([h, d], [snpdval], [evedit,evsnpd])
+            assert evedit == h
+            assert snpdval == d
+        else:
+            valres = ukkonen_lev2(mseq1.replace("-",""),mseq2.replace("-",""))
+            evedit, evsnpd = valres[1], valres[0]
+            snpdval, NMval, NNval = get_aln_stats(mseq1, mseq2)
+            print([h, d], [snpdval], [evedit,evsnpd])
+            assert snpdval >= -d
+
+            
