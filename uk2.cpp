@@ -70,12 +70,16 @@ std::vector<int> cal_imax_arr(int m, int n) {
 *
 *
 */
-bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_triple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
+bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_quintuple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
     int m = s1.length();
     int n = s2.length();
-    int h_start = state_triple[0];
-    int lower_bound = state_triple[1];
-    int upper_bound = state_triple[2];
+    int h_start = state_quintuple[0];
+    int lower_bound = state_quintuple[1];
+    int upper_bound = state_quintuple[2];
+    // the diagonal to resume on, at (h,d)
+    int d_resume = state_quintuple[3];
+    int maxi_resume = state_quintuple[4];
+    if (d_resume > 0) assert(maxi_resume > 0);
     // Init L arrays
     auto L0 = state_arr;
     auto L1 = state_arr + rowsize;
@@ -94,17 +98,25 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
     auto NN1 = state_arr + 10*rowsize;
     auto NN2 = state_arr + 11*rowsize;
 
-    if (freeze && n == 0) { return false; }
+    if (freeze && n == 0) { return true; }
 
     int h = h_start;
     std::vector<int> imax_arr = cal_imax_arr(m, n);
     while (h < 2*(m+n)+1) {
-        cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
-        std::cerr << h << std::endl;
-        state_triple[0] = h;
+//        cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
+//        std::cerr << h << std::endl;
+        state_quintuple[0] = h;
         int prev_lower_bound = lower_bound;
         int prev_upper_bound = upper_bound;
-        for (int d = std::max(-(h/2), lower_bound); d < std::min((h/2),upper_bound)+1; ++d) {
+        int dstart;
+        if (d_resume > 0) { 
+            dstart = d_resume;
+            d_resume = 0;
+        }
+        else {
+             dstart = std::max(-(h/2), lower_bound);
+        }
+        for (int d = dstart; d < std::min((h/2),upper_bound)+1; ++d) {
             int ld = m+d;
             int imax = imax_arr[ld];
             assert (ld >= 0);
@@ -112,44 +124,56 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
             assert (upper_bound + m <= m+n+1);
             assert (L1[ld] < imax);
             int maxi = -1;
-            int lmove = L0[ld-1];
-            int matchmove = std::min(L1[ld] + 1, imax);
-            int rmove = std::min(L0[ld+1] + 1, imax);
-            int prev_mm = M1[ld];
             int prev_NM = -1;
             int prev_NN = -1;
-            // TODO: check the bounds are not redundant
-            if ((d > -h) && (ld-1 > 0)) {
-                maxi = std::max(maxi, lmove);
-                M2[ld] = M0[ld-1];
-                prev_NM = NM0[ld-1];
-                prev_NN = NN0[ld-1];
-            }
-            if ((d < h) && (ld+1 < m+n+1)) {
-                maxi = std::max(maxi, rmove);
-                if (rmove >= lmove) { 
-                    M2[ld] = M0[ld+1]; 
-                    prev_NM = NM0[ld+1];
-                    prev_NN = NN0[ld+1];
+            if (maxi_resume == 0) {
+                int lmove = L0[ld-1];
+                int matchmove = std::min(L1[ld] + 1, imax);
+                int rmove = std::min(L0[ld+1] + 1, imax);
+                int prev_mm = M1[ld];
+                // TODO: check the bounds are not redundant
+                if ((d > -h) && (ld-1 > 0)) {
+                    maxi = std::max(maxi, lmove);
+                    M2[ld] = M0[ld-1];
+                    prev_NM = NM0[ld-1];
+                    prev_NN = NN0[ld-1];
                 }
-            }
-            if (matchmove >= maxi) {
-                maxi = matchmove;
-                prev_NM = NM1[ld];
-                prev_NN = NN1[ld];
-                if (maxi > 0) {
-                    prev_NM += 1;
-                    M2[ld] = prev_mm + 1;
+                if ((d < h) && (ld+1 < m+n+1)) {
+                    maxi = std::max(maxi, rmove);
+                    if (rmove >= lmove) { 
+                        M2[ld] = M0[ld+1]; 
+                        prev_NM = NM0[ld+1];
+                        prev_NN = NN0[ld+1];
+                    }
                 }
+                if (matchmove >= maxi) {
+                    maxi = matchmove;
+                    prev_NM = NM1[ld];
+                    prev_NN = NN1[ld];
+                    if (maxi > 0) {
+                        prev_NM += 1;
+                        M2[ld] = prev_mm + 1;
+                    }
+                }
+                // TODO: redundant?
+                maxi = std::min(maxi, imax);
             }
-            // TODO: redundant?
-            maxi = std::min(maxi, imax);
+            else { 
+                maxi = maxi_resume;
+                maxi_resume = 0;
+                prev_NM = NM2[ld];
+                prev_NN = NN2[ld];
+            }
             int sl, mn;
             if (maxi < imax) {
                 std::pair<int,int> res =  slide(d, maxi, s1, s2, imax);
                 sl = res.first; mn = res.second;
                 assert (sl <= imax);
                 prev_NM += (sl-maxi);
+                // heuristic abandonment
+                if (sl-maxi > slide_threshold) {
+                    if (M2[ld] >= snpmax) { return false; }
+                }
                 prev_NN += mn;
                 L2[ld] = sl;
             }
@@ -161,10 +185,12 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
                     
             if (freeze && d >= n-m) {
                 if (L2[ld] == imax) {
-                    std::cerr << "freezing on" << std::endl;
-                    cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
-                    state_triple[1] = prev_lower_bound;
-                    state_triple[2] = prev_upper_bound;
+//                    std::cerr << "freezing on" << std::endl;
+//                    cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
+                    state_quintuple[1] = prev_lower_bound;
+                    state_quintuple[2] = prev_upper_bound;
+                    state_quintuple[3] = d;
+                    state_quintuple[4] = maxi;
                     std::memmove(L2, L1, rowsize * sizeof(L0[0]));
                     return true;
                 }
@@ -172,11 +198,11 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_t
 
             assert (M2[ld] >= 0);
             if (ld <= n && L2[ld] >= imax) {
-                lower_bound = d+1; state_triple[1] = d+1;
+                lower_bound = d+1; state_quintuple[1] = d+1;
                 assert (lower_bound + m >= 0);
             }
             if (ld > n && L2[ld] >= imax) {
-                upper_bound = d-1; state_triple[2] = d-1;
+                upper_bound = d-1; state_quintuple[2] = d-1;
                 assert (upper_bound + m >= n);
                 assert (upper_bound + m <= n+m+1);
                 break;
@@ -260,29 +286,71 @@ void DistCalculator::init_state_array(int* state_arr, int rowsize) {
     }
 }
 
-void DistCalculator::init_state_triple(int* state_triple, int len1, int len2) {
-    state_triple[0] = 0;
-    state_triple[1] = -2 * len1;
-    state_triple[2] = 2 * len2;
+void DistCalculator::init_state_quintuple(int* state_quintuple, int len1, int len2) {
+    state_quintuple[0] = 0;
+    state_quintuple[1] = -len1;
+    state_quintuple[2] = len2;
+    state_quintuple[3] = 0;
+    state_quintuple[4] = 0;
+}
+
+bool pair_compare(const std::pair<std::string,std::string> &a, const std::pair<std::string,std::string> &b) {
+    return a.second < b.second;
+}
+
+int get_last_prefix_match(const std::string & s1, const std::string & s2) {
+    for (int j = 0; j < std::min(s1.length(), s2.length()); ++j) {
+         if (s1[j] != s2[j]) return j-1;
+    }
+    return std::min(s1.length(), s2.length())-1;
+}
+
+std::vector<int> get_prefix_array(const std::vector<std::pair<std::string,std::string>>& records) {
+    std::vector<int> res;
+    for (int j = 1; j < records.size(); ++j) {
+        res.push_back(get_last_prefix_match(records[j].second, records[j-1].second));
+    }
+    return res;
 }
 
 void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
     std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
+//    // sort refs
+//    sort(refs.begin(),refs.end(),pair_compare);
+//    std::vector<int> prefix_arr = get_prefix_array(refs);
+
     int state_arr[12*MAX_ROW_SIZE] = {0};
-    int state_triple[3] = {0,0,0};
+    int state_quintuple[5] = {0,0,0,0,0};
+    int prefix_state_arr[12*MAX_ROW_SIZE] = {0};
+    int prefix_state_quintuple[5] = {0,0,0,0,0};
     for (auto& p1: queries) {
-        for (auto& p2: refs) {
+//        for (auto& p2: refs) {
+        for (int refi = 0; refi < refs.size(); ++refi) {
+            std::pair<std::string, std::string> p2 = refs[refi];
             int rowsize = p1.second.length() + p2.second.length() + 1;
+            init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
             init_state_array(state_arr, rowsize);
-            init_state_triple(state_triple, p1.second.length(), p2.second.length());
             int mm_ind = 5*rowsize + p2.second.length();
             int NM_ind = 8*rowsize + p2.second.length();
             int NN_ind = 11*rowsize + p2.second.length();
-            calculate_dist(p1.second, p2.second, state_triple, state_arr, rowsize, 5, 100, false);
-            std::cout << p1.first << "," << p2.first << "," 
-                      << state_triple[0] << "," << state_arr[mm_ind] 
-                      << state_arr[NM_ind] << "," << state_arr[NN_ind] << std::endl;
+            // As long as we are not on the last ref; calculate prefix length with next neighbor
+//            if (refi < refs.size()-1) {
+//                init_state_quintuple(state_quintuple, p1.second.length(), prefix_arr[refi]);
+//                std::cerr << "calculating prefix " << refi <<  " of size " << prefix_arr[refi] << std::endl;
+//                calculate_dist(p1.second, p2.second.substr(0,prefix_arr[refi]), state_quintuple, state_arr, rowsize, 5, 100, true);
+//                state_quintuple[2] = p2.second.length();
+//            }
+            // only use results if dist < k; res is false if snpmax exceeded
+            bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, 5, 100, false);
+            if (res) {
+                std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
+                          << state_arr[NM_ind] << "," << state_arr[NN_ind] << std::endl;
+            }
+            else {
+                std::cout << p1.first << "," << p2.first << "," << -1 << "," << -1 << ","
+                          << -1 << "," << -1 << std::endl;
+            }
         }
     }
 }
