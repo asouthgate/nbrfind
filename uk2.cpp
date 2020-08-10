@@ -313,7 +313,7 @@ std::vector<int> get_prefix_array(const std::vector<std::pair<std::string,std::s
     return res;
 }
 
-void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname) {
+void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
     std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
 //    // sort refs
@@ -342,14 +342,14 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
 //                state_quintuple[2] = p2.second.length();
 //            }
             // only use results if dist < k; res is false if snpmax exceeded
-            bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, 5, 100, false);
+            bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
             if (res) {
                 std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
                           << state_arr[NM_ind] << "," << state_arr[NN_ind] << std::endl;
             }
             else {
-                std::cout << p1.first << "," << p2.first << "," << -1 << "," << -1 << ","
-                          << -1 << "," << -1 << std::endl;
+                std::cout << p1.first << "," << p2.first << "," << -k << "," << -k << ","
+                          << -k << "," << -k << std::endl;
             }
         }
     }
