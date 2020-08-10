@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <set>
 #include "uk2.hpp"
 
 std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
@@ -32,23 +33,29 @@ void cerrarr(int* v, int rowsize) {
     std::cerr << std::endl;
 }
 
-unsigned long long binom(unsigned int n, unsigned int k) {
+double binom(unsigned int n, unsigned int k) {
     if (n == k || k == 0) return 1;
     return binom(n-1, k-1) * n/k;
 }
 
-unsigned long long beta(unsigned long long u, unsigned long long v) { 
-    return std::tgammal(u)*std::tgammal(v)/std::tgamma(u+v);
+double logbeta(double u, double v) { 
+    return std::lgamma(u)+std::lgamma(v)-std::lgamma(u+v);
 }
 
-double betap(int d, int M, int N, int k, int a=1, int b=1) {
+double DistCalculator::betap(int d, int M, int N, int k, int a, int b) {
+    std::cerr << d << " " << M << " " << N << " " << k << " " << a << " " << b  << std::endl;
     if (d >= k) return 0;
     double sum = 0;
-    for (int z = 0; z < k; ++z) {
-        unsigned long long b = binom(N,z);
-        long double numo = beta(z-a+d,N-z+b+M-d);
-        long double deno = beta(a+d, b+M-d);
+    for (int z = 0; z < k-d; ++z) {
+        double b = binom(N,z);
+        double lnumo = logbeta(z+a+d,N-z+b+M-d);
+        double ldeno = logbeta(a+d, b+M-d);
+//        assert (ldeno > lnumo);
+        double res = b*std::exp(lnumo-ldeno);
+        std::cerr << b << " " << lnumo << " " << ldeno << std::endl;
+        sum += (b * res);
     }
+    return sum;
 } 
 
 int cal_imax(int d, int m, int n) {
@@ -275,13 +282,7 @@ void DistCalculator::init_state_array(int* state_arr, int rowsize) {
     for (int i = 2*rowsize; i < 3*rowsize; ++i) {
         state_arr[i] = -1;
     }
-    for (int i = 3*rowsize; i < 4*rowsize; ++i) {
-        state_arr[i] = 0;
-    }
-    for (int i = 4*rowsize; i < 5*rowsize; ++i) {
-        state_arr[i] = 0;
-    }
-    for (int i = 5*rowsize; i < 6*rowsize; ++i) {
+    for (int i = 3*rowsize; i < 12*rowsize; ++i) {
         state_arr[i] = 0;
     }
 }
@@ -313,46 +314,100 @@ std::vector<int> get_prefix_array(const std::vector<std::pair<std::string,std::s
     return res;
 }
 
-void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k) {
-    std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
-    std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
-//    // sort refs
-//    sort(refs.begin(),refs.end(),pair_compare);
-//    std::vector<int> prefix_arr = get_prefix_array(refs);
-
-    int state_arr[12*MAX_ROW_SIZE] = {0};
+std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<std::string,std::string>>& tmprefs, int k, double epsilon) {
+    std::cerr << "Fetching clusters" << std::endl;
+    std::vector<Cluster> clusters;
+    // Initiate available set
+    std::vector<int> available_members;
+    // init required arrays for comparisons
+    int* state_arr = new int[12*MAX_ROW_SIZE]();
     int state_quintuple[5] = {0,0,0,0,0};
-    int prefix_state_arr[12*MAX_ROW_SIZE] = {0};
-    int prefix_state_quintuple[5] = {0,0,0,0,0};
-    for (auto& p1: queries) {
-//        for (auto& p2: refs) {
-        for (int refi = 0; refi < refs.size(); ++refi) {
-            std::pair<std::string, std::string> p2 = refs[refi];
+    for (int i = 1; i < tmprefs.size(); ++i) available_members.push_back(i);
+    while (available_members.size() > 0) {
+        Cluster cluster;
+        // take a new curr_centroid
+        cluster.xi = available_members[0];
+        for (int j = 1; j < available_members.size(); ++j) {
+            int refi = available_members[j];
+            std::pair<std::string, std::string> p1 = tmprefs[refi];
+            std::pair<std::string, std::string> p2 = tmprefs[cluster.xi];
             int rowsize = p1.second.length() + p2.second.length() + 1;
             init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
             init_state_array(state_arr, rowsize);
             int mm_ind = 5*rowsize + p2.second.length();
             int NM_ind = 8*rowsize + p2.second.length();
             int NN_ind = 11*rowsize + p2.second.length();
-            // As long as we are not on the last ref; calculate prefix length with next neighbor
-//            if (refi < refs.size()-1) {
-//                init_state_quintuple(state_quintuple, p1.second.length(), prefix_arr[refi]);
-//                std::cerr << "calculating prefix " << refi <<  " of size " << prefix_arr[refi] << std::endl;
-//                calculate_dist(p1.second, p2.second.substr(0,prefix_arr[refi]), state_quintuple, state_arr, rowsize, 5, 100, true);
-//                state_quintuple[2] = p2.second.length();
-//            }
-            // only use results if dist < k; res is false if snpmax exceeded
             bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
+            double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], 2*k);
+            std::cerr << state_arr[mm_ind] << " " << state_arr[NM_ind] << " " << state_arr[NN_ind] << " "<< p << std::endl;
+            if (res && p > epsilon) {
+                cluster.members.push_back(refi);
+            }
+        }
+        std::cerr << "creating new cluster of size "<< cluster.members.size() << std::endl;
+        // Now delete the cluster members from available members; go backwards
+        std::cerr << "deleting... " << " ";
+        available_members.erase(std::remove(available_members.begin(), available_members.end(), cluster.xi), available_members.end());
+        for (int cmj : cluster.members) {
+            std::cerr << cmj << " ";
+            available_members.erase(std::remove(available_members.begin(), available_members.end(), cmj), available_members.end());
+        }        
+        std::cerr << std::endl;
+        clusters.push_back(cluster);
+    }
+    delete[] state_arr;
+    std::cerr << "Got " << clusters.size() << " clusters" << std::endl;
+    return clusters;
+}
+
+void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, double epsilon) {
+    std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
+    std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
+    // Firstly create clusters and reps
+    std::cerr << "fetching clusters within " << k << " " << epsilon << std::endl;
+    std::vector<Cluster> clusters = get_clusters(refs, k, epsilon);
+    // allocate these on the heap
+    int* state_arr = new int[12*MAX_ROW_SIZE]();
+    int state_quintuple[5] = {0,0,0,0,0};
+    for (auto& p1 : queries) {
+        for (Cluster& c : clusters) {
+            int xi = c.xi;
+            std::pair<std::string, std::string> p2 = refs[xi];
+            int rowsize = p1.second.length() + p2.second.length() + 1;
+            init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
+            init_state_array(state_arr, rowsize);
+            int mm_ind = 5*rowsize + p2.second.length();
+            int NM_ind = 8*rowsize + p2.second.length();
+            int NN_ind = 11*rowsize + p2.second.length();
+            bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
+            double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], k);
             if (res) {
                 std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
-                          << state_arr[NM_ind] << "," << state_arr[NN_ind] << std::endl;
-            }
-            else {
-                std::cout << p1.first << "," << p2.first << "," << -k << "," << -k << ","
-                          << -k << "," << -k << std::endl;
+                              << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
+                for (int refi : c.members) {
+                    std::pair<std::string, std::string> p2 = refs[refi];
+                    int rowsize = p1.second.length() + p2.second.length() + 1;
+                    init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
+                    init_state_array(state_arr, rowsize);
+                    int mm_ind = 5*rowsize + p2.second.length();
+                    int NM_ind = 8*rowsize + p2.second.length();
+                    int NN_ind = 11*rowsize + p2.second.length();
+                    bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
+                    if (res) {
+                        std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
+                                  << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
+
+                    }
+                    else {
+                        std::cout << p1.first << "," << p2.first << "," << -k << "," << -k << ","
+                                  << -k << "," << -k << "," << p << std::endl;
+
+                    }
+                }
             }
         }
     }
+    delete[] state_arr;
 }
 
 std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std::string fasta_fname) {
@@ -360,7 +415,7 @@ std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std:
     std::vector<std::pair<std::string,std::string>> records;
     std::string curr_str = "";
     std::string curr_h = "";
-    std::string l = "";
+    std::string l;
     int rec_counter = 0;
     int c = 0;
     std::ifstream fasta_file(fasta_fname);
@@ -374,8 +429,7 @@ std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std:
                 convert_nonstandard_to_N(curr_str);
                 bool cds = trim_to_cds(curr_str);
                 if (cds && filter(curr_str)) {
-                    std::pair<std::string,std::string> record(curr_h, curr_str);
-                    records.push_back(record);
+                    records.push_back(std::pair<std::string,std::string>(curr_h, curr_str));
                 }
                 rec_counter += 1;
             }
