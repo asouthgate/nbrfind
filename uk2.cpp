@@ -43,7 +43,6 @@ double logbeta(double u, double v) {
 }
 
 double DistCalculator::betap(int d, int M, int N, int k, int a, int b) {
-    std::cerr << d << " " << M << " " << N << " " << k << " " << a << " " << b  << std::endl;
     if (d >= k) return 0;
     double sum = 0;
     for (int z = 0; z < k-d; ++z) {
@@ -52,7 +51,6 @@ double DistCalculator::betap(int d, int M, int N, int k, int a, int b) {
         double ldeno = logbeta(a+d, b+M-d);
 //        assert (ldeno > lnumo);
         double res = b*std::exp(lnumo-ldeno);
-        std::cerr << b << " " << lnumo << " " << ldeno << std::endl;
         sum += (b * res);
     }
     return sum;
@@ -218,18 +216,26 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
                 return true;
             }
         }
-        // TODO: memcopy? don't overlap in range
-        std::memmove(L0, L1, rowsize * sizeof(L0[0]));
-        std::memmove(L1, L2, rowsize * sizeof(L0[0]));
+        // Don't need to memcopy! just change pointers!
+        L0 = L1;
+        L1 = L2;
+        M0 = M1;
+        M1 = M2;
+        NM0 = NM1;
+        NM1 = NM2;
+        NN0 = NN1;
+        NN1 = NN2;
+//        std::memmove(L0, L1, rowsize * sizeof(L0[0]));
+//        std::memmove(L1, L2, rowsize * sizeof(L0[0]));
 
-        std::memmove(M0, M1, rowsize * sizeof(L0[0]));
-        std::memmove(M1, M2, rowsize * sizeof(L0[0]));
+//        std::memmove(M0, M1, rowsize * sizeof(L0[0]));
+//        std::memmove(M1, M2, rowsize * sizeof(L0[0]));
 
-        std::memmove(NM0, NM1, rowsize * sizeof(L0[0]));
-        std::memmove(NM1, NM2, rowsize * sizeof(L0[0]));
+//        std::memmove(NM0, NM1, rowsize * sizeof(L0[0]));
+//        std::memmove(NM1, NM2, rowsize * sizeof(L0[0]));
 
-        std::memmove(NN0, NN1, rowsize * sizeof(L0[0]));
-        std::memmove(NN1, NN2, rowsize * sizeof(L0[0]));
+//        std::memmove(NN0, NN1, rowsize * sizeof(L0[0]));
+//        std::memmove(NN1, NN2, rowsize * sizeof(L0[0]));
         h += 1;
     }
     return true;
@@ -276,15 +282,13 @@ void DistCalculator::init_state_array(int* state_arr, int rowsize) {
     for (int i = 0; i < rowsize; ++i) {
         state_arr[i] = -2;
     }
-    for (int i = rowsize; i < 2*rowsize; ++i) {
-        state_arr[i] = -1;
-    }
-    for (int i = 2*rowsize; i < 3*rowsize; ++i) {
+    for (int i = rowsize; i < 3*rowsize; ++i) {
         state_arr[i] = -1;
     }
     for (int i = 3*rowsize; i < 12*rowsize; ++i) {
         state_arr[i] = 0;
     }
+
 }
 
 void DistCalculator::init_state_quintuple(int* state_quintuple, int len1, int len2) {
@@ -339,7 +343,6 @@ std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<st
             int NN_ind = 11*rowsize + p2.second.length();
             bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
             double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], 2*k);
-            std::cerr << state_arr[mm_ind] << " " << state_arr[NM_ind] << " " << state_arr[NN_ind] << " "<< p << std::endl;
             if (res && p > epsilon) {
                 cluster.members.push_back(refi);
             }
@@ -353,6 +356,7 @@ std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<st
             available_members.erase(std::remove(available_members.begin(), available_members.end(), cmj), available_members.end());
         }        
         std::cerr << std::endl;
+        std::cerr << "remaining members "<< available_members.size() << std::endl;
         clusters.push_back(cluster);
     }
     delete[] state_arr;
@@ -393,7 +397,7 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
                     int NM_ind = 8*rowsize + p2.second.length();
                     int NN_ind = 11*rowsize + p2.second.length();
                     bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
-                    if (res) {
+                    if (res && p > epsilon) {
                         std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
                                   << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
 
