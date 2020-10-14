@@ -62,12 +62,10 @@ int cal_imax(int d, int m, int n) {
     return d <= v ? m : m-d+v;
 }
 
-std::vector<int> cal_imax_arr(int m, int n) {
-    std::vector<int> res;
+void fill_imax_arr(std::vector<int> & v, int m, int n) {
     for (int ld = 0; ld < m+n+1; ++ld) {
-        res.push_back(cal_imax(ld-m,m,n));
+        v[ld] = cal_imax(ld-m,m,n);
     }
-    return res;
 }
 
 /*
@@ -106,7 +104,9 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
     if (freeze && n == 0) { return true; }
 
     int h = h_start;
-    std::vector<int> imax_arr = cal_imax_arr(m, n);
+    std::vector<int> imax_arr;
+    imax_arr.reserve(m+n+1);
+    fill_imax_arr(imax_arr, m, n);
     while (h < 2*(m+n)+1) {
 //        cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
 //        std::cerr << h << std::endl;
@@ -367,16 +367,17 @@ std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<st
 void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, double epsilon) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
     std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
-    // Firstly create clusters and reps
-    std::cerr << "fetching clusters within " << k << " " << epsilon << std::endl;
-    std::vector<Cluster> clusters = get_clusters(refs, k, epsilon);
+//    // Firstly create clusters and reps
+//    std::cerr << "fetching clusters within " << k << " " << epsilon << std::endl;
+//    std::vector<Cluster> clusters = get_clusters(refs, k, epsilon);
     // allocate these on the heap
     int* state_arr = new int[12*MAX_ROW_SIZE]();
     int state_quintuple[5] = {0,0,0,0,0};
     for (auto& p1 : queries) {
-        for (Cluster& c : clusters) {
-            int xi = c.xi;
-            std::pair<std::string, std::string> p2 = refs[xi];
+        for (auto& p2 : refs) {
+//        for (Cluster& c : clusters) {
+//            int xi = c.xi;
+//            std::pair<std::string, std::string> p2 = refs[xi];
             int rowsize = p1.second.length() + p2.second.length() + 1;
             init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
             init_state_array(state_arr, rowsize);
@@ -385,30 +386,8 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
             int NN_ind = 11*rowsize + p2.second.length();
             bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
             double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], k);
-            if (res) {
-                std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
-                              << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
-                for (int refi : c.members) {
-                    std::pair<std::string, std::string> p2 = refs[refi];
-                    int rowsize = p1.second.length() + p2.second.length() + 1;
-                    init_state_quintuple(state_quintuple, p1.second.length(), p2.second.length());
-                    init_state_array(state_arr, rowsize);
-                    int mm_ind = 5*rowsize + p2.second.length();
-                    int NM_ind = 8*rowsize + p2.second.length();
-                    int NN_ind = 11*rowsize + p2.second.length();
-                    bool res = calculate_dist(p1.second, p2.second, state_quintuple, state_arr, rowsize, k, 100, false);
-                    if (res && p > epsilon) {
-                        std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
-                                  << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
-
-                    }
-                    else {
-                        std::cout << p1.first << "," << p2.first << "," << -k << "," << -k << ","
-                                  << -k << "," << -k << "," << p << std::endl;
-
-                    }
-                }
-            }
+            std::cout << p1.first << "," << p2.first << "," << state_quintuple[0] << "," << state_arr[mm_ind] << ","
+                          << state_arr[NM_ind] << "," << state_arr[NN_ind] << "," << p << std::endl;
         }
     }
     delete[] state_arr;
