@@ -10,6 +10,7 @@
 #include <set>
 #include "uk2.hpp"
 #include "probfunc.hpp"
+#include "seqio.hpp"
 
 std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
     assert (i < imax);
@@ -202,43 +203,6 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
     return true;
 }
 
-const std::string five_prime = "ATGGAGAGCCTTGTCCCTGG";
-const std::string three_prime = "TTAACTTTAATCTCACATAG";
-bool trim_to_cds(std::string& s) {
-    std::size_t found5 = s.find(five_prime);
-    if (found5!=std::string::npos) {
-        s = s.substr(found5);
-    }
-    else { std::cerr << "failed to find 3'" << std::endl; return false; }
-    std::size_t found3 = s.find(three_prime);
-    if (found3!=std::string::npos) {
-        s = s.substr(0,found3+three_prime.length());
-    }
-    else { std::cerr << "failed to find 3'" << std::endl; return false; }
-    return true;
-}
-
-void convert_nonstandard_to_N(std::string & s) {
-    for (int j = 0; j < s.size(); ++j) {
-        if (s[j] == 'A') {}
-        else if (s[j] == 'C') {}
-        else if (s[j] == 'G') {}
-        else if (s[j] == 'T') {}
-        else s[j] = 'N';
-    }
-}
-
-bool filter(const std::string& s) {
-    if (s.length() < MIN_LENGTH) return false;
-    if (s.length() > MAX_LENGTH) return false;
-    size_t n = std::count(s.begin(), s.end(), 'N');
-    float perc_gaps = n/ (float) s.length();
-    if (perc_gaps > 0.2) {
-        std::cerr << "too many gaps'" << std::endl; return false;
-    }
-    return true;
-}
-
 void DistCalculator::init_state_array(int* state_arr, int rowsize) {
     for (int i = 0; i < rowsize; ++i) {
         state_arr[i] = -2;
@@ -372,7 +336,7 @@ std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std:
                [](unsigned char c){ return std::toupper(c); });
                 convert_nonstandard_to_N(curr_str);
                 bool cds = trim_to_cds(curr_str);
-                if (cds && filter(curr_str)) {
+                if (cds && filter(curr_str, MIN_LENGTH, MAX_LENGTH)) {
                     records.push_back(std::pair<std::string,std::string>(curr_h, curr_str));
                 }
                 rec_counter += 1;
@@ -390,7 +354,7 @@ std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std:
            [](unsigned char c){ return std::toupper(c); });
     convert_nonstandard_to_N(curr_str);
     bool cds = trim_to_cds(curr_str);
-    if (cds && filter(curr_str)) {
+    if (cds && filter(curr_str, MIN_LENGTH, MAX_LENGTH)) {
         std::pair<std::string,std::string> record(curr_h, curr_str);
         records.push_back(record);
     }

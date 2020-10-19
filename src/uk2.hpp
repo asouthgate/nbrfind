@@ -20,5 +20,4 @@ class DistCalculator {
         std::vector<std::pair<std::string, std::string>> read_fasta(std::string fasta_fname);
         void init_state_array(int* state_arr, int rowsize);
         void init_state_quintuple(int* state_triple, int len1, int len2);
-        double betap(int d, int M, int N, int k, int a=1, int b=1);
 };

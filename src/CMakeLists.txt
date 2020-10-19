@@ -1,4 +1,4 @@
-add_library(uk2 SHARED uk2.cpp)
+add_library(uk2 SHARED uk2.cpp probfunc.cpp seqio.cpp)
 
 add_library(uk2wrap SHARED uk2wrap.cpp)
 

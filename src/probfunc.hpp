@@ -5,6 +5,6 @@ double binom(unsigned int n, unsigned int k);
 
 double logbeta(double u, double v);
 
-double betap(int d, int M, int N, int k, int a, int b);
+double betap(int d, int M, int N, int k, int a=1, int b=1);
 
 #endif
