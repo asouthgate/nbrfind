@@ -290,8 +290,8 @@ std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<st
 }
 
 void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, double epsilon) {
-    std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname);
-    std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname);   
+    std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname, MIN_LENGTH, MAX_LENGTH);
+    std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname, MIN_LENGTH, MAX_LENGTH);
 //    // Firstly create clusters and reps
 //    std::cerr << "fetching clusters within " << k << " " << epsilon << std::endl;
 //    std::vector<Cluster> clusters = get_clusters(refs, k, epsilon);
@@ -316,50 +316,6 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
         }
     }
     delete[] state_arr;
-}
-
-std::vector<std::pair<std::string, std::string>> DistCalculator::read_fasta(std::string fasta_fname) {
-    std::cerr << "Reading " << fasta_fname << std::endl;
-    std::vector<std::pair<std::string,std::string>> records;
-    std::string curr_str = "";
-    std::string curr_h = "";
-    std::string l;
-    int rec_counter = 0;
-    int c = 0;
-    std::ifstream fasta_file(fasta_fname);
-    while (std::getline(fasta_file,l)) {
-        l.erase(std::remove(l.begin(), l.end(), '\n'), l.end());
-        l.erase(std::remove(l.begin(), l.end(), '\r'), l.end());
-        if (l[0] == '>') {
-            if (c > 0) {
-                std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
-               [](unsigned char c){ return std::toupper(c); });
-                convert_nonstandard_to_N(curr_str);
-                bool cds = trim_to_cds(curr_str);
-                if (cds && filter(curr_str, MIN_LENGTH, MAX_LENGTH)) {
-                    records.push_back(std::pair<std::string,std::string>(curr_h, curr_str));
-                }
-                rec_counter += 1;
-            }
-            curr_h = l;
-            curr_str = "";
-        }
-        else {
-            curr_str = curr_str + l;
-        }
-        c += 1;
-    }
-    rec_counter += 1;
-    std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
-           [](unsigned char c){ return std::toupper(c); });
-    convert_nonstandard_to_N(curr_str);
-    bool cds = trim_to_cds(curr_str);
-    if (cds && filter(curr_str, MIN_LENGTH, MAX_LENGTH)) {
-        std::pair<std::string,std::string> record(curr_h, curr_str);
-        records.push_back(record);
-    }
-    std::cerr << "Excluded " << rec_counter-records.size() << " of " << records.size() << " records due to filter..." << std::endl;
-    return records;
 }
 
 
