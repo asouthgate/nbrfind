@@ -9,6 +9,7 @@
 #include <fstream>
 #include <set>
 #include "uk2.hpp"
+#include "probfunc.hpp"
 
 std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
     assert (i < imax);
@@ -25,29 +26,6 @@ std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string&
     }
     return std::pair<int,int>(imax, Nc);
 }
-
-double binom(unsigned int n, unsigned int k) {
-    if (n == k || k == 0) return 1;
-    return binom(n-1, k-1) * n/k;
-}
-
-double logbeta(double u, double v) { 
-    return std::lgamma(u)+std::lgamma(v)-std::lgamma(u+v);
-}
-
-double DistCalculator::betap(int d, int M, int N, int k, int a, int b) {
-    if (d >= k) return 0;
-    double sum = 0;
-    for (int z = 0; z < k-d; ++z) {
-        double b = binom(N,z);
-        double lnumo = logbeta(z+a+d,N-z+b+M-d);
-        double ldeno = logbeta(a+d, b+M-d);
-//        assert (ldeno > lnumo);
-        double res = b*std::exp(lnumo-ldeno);
-        sum += (b * res);
-    }
-    return sum;
-} 
 
 int cal_imax(int d, int m, int n) {
     if (m >= n) return d <= 0 ? m : m-d;
