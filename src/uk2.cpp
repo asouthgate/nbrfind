@@ -224,25 +224,6 @@ void DistCalculator::init_state_quintuple(int* state_quintuple, int len1, int le
     state_quintuple[4] = 0;
 }
 
-bool pair_compare(const std::pair<std::string,std::string> &a, const std::pair<std::string,std::string> &b) {
-    return a.second < b.second;
-}
-
-int get_last_prefix_match(const std::string & s1, const std::string & s2) {
-    for (int j = 0; j < std::min(s1.length(), s2.length()); ++j) {
-         if (s1[j] != s2[j]) return j-1;
-    }
-    return std::min(s1.length(), s2.length())-1;
-}
-
-std::vector<int> get_prefix_array(const std::vector<std::pair<std::string,std::string>>& records) {
-    std::vector<int> res;
-    for (int j = 1; j < records.size(); ++j) {
-        res.push_back(get_last_prefix_match(records[j].second, records[j-1].second));
-    }
-    return res;
-}
-
 std::vector<Cluster> DistCalculator::get_clusters(const std::vector<std::pair<std::string,std::string>>& tmprefs, int k, double epsilon) {
     std::cerr << "Fetching clusters" << std::endl;
     std::vector<Cluster> clusters;
