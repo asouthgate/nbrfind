@@ -17,3 +17,12 @@ extern "C" {
         return strlen(a)-1;
     }
 }
+
+void cerrarr(int* v, int rowsize) {
+    for (int pj = 0; pj < rowsize; ++pj) {
+        std::cerr << v[pj] << " ";
+    }
+    std::cerr << std::endl;
+}
+
+

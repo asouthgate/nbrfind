@@ -26,13 +26,6 @@ std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string&
     return std::pair<int,int>(imax, Nc);
 }
 
-void cerrarr(int* v, int rowsize) {
-    for (int pj = 0; pj < rowsize; ++pj) {
-        std::cerr << v[pj] << " ";
-    }
-    std::cerr << std::endl;
-}
-
 double binom(unsigned int n, unsigned int k) {
     if (n == k || k == 0) return 1;
     return binom(n-1, k-1) * n/k;
@@ -216,7 +209,8 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
                 return true;
             }
         }
-        // Don't need to memcopy! just change pointers!
+
+        // Don't need to memcopy! Swap pointers;
         L0 = L1;
         L1 = L2;
         M0 = M1;
@@ -225,17 +219,6 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
         NM1 = NM2;
         NN0 = NN1;
         NN1 = NN2;
-//        std::memmove(L0, L1, rowsize * sizeof(L0[0]));
-//        std::memmove(L1, L2, rowsize * sizeof(L0[0]));
-
-//        std::memmove(M0, M1, rowsize * sizeof(L0[0]));
-//        std::memmove(M1, M2, rowsize * sizeof(L0[0]));
-
-//        std::memmove(NM0, NM1, rowsize * sizeof(L0[0]));
-//        std::memmove(NM1, NM2, rowsize * sizeof(L0[0]));
-
-//        std::memmove(NN0, NN1, rowsize * sizeof(L0[0]));
-//        std::memmove(NN1, NN2, rowsize * sizeof(L0[0]));
         h += 1;
     }
     return true;
