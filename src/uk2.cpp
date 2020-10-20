@@ -11,8 +11,9 @@
 #include "uk2.hpp"
 #include "probfunc.hpp"
 #include "seqio.hpp"
+#include "sdata.hpp"
 
-std::pair<int,int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
+std::pair<int, int> slide(int d, int i, const std::string& s1, const std::string& s2, int imax) {
     assert (i < imax);
     int Nc = 0;
     int qend = std::min(s1.length(), s2.length()-d);
@@ -40,15 +41,158 @@ void fill_imax_arr(std::vector<int> & v, int m, int n) {
     }
 }
 
-/*
-* Compute the diagonal dynamic programming matrix and auxiliaries
-*
-*
-*/
-bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_quintuple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
+
+MoveResult cal_move(StateData& state_data, const int& d, const int& ld, const int& m, const int& n, const int& imax) {
+    int lmove = sd.L0[ld-1];
+    int matchmove = std::min(sd.L1[ld] + 1, imax);
+    int rmove = std::min(sd.L0[ld+1] + 1, imax);
+    int prev_mm = sd.M1[ld];
+    // TODO: check the bounds are not redundant
+    if ((d > -sd.h) && (ld - 1 > 0)) {
+        maxi = std::max(maxi, lmove);
+        sd.M2[ld] = sd.M0[ld-1];
+        prev_NM = sd.NM0[ld-1];
+        prev_NN = sd.NN0[ld-1];
+    }
+    if ((d < sd.h) && (ld + 1 < m + n + 1)) {
+        maxi = std::max(maxi, rmove);
+        if (rmove >= lmove) { 
+            sd.M2[ld] = sd.M0[ld+1]; 
+            prev_NM = sd.NM0[ld+1];
+            prev_NN = sd.NN0[ld+1];
+        }
+    }
+    if (matchmove >= maxi) {
+        maxi = matchmove;
+        prev_NM = sd.NM1[ld];
+        prev_NN = sd.NN1[ld];
+        if (maxi > 0) {
+            prev_NM += 1;
+            sd.M2[ld] = prev_mm + 1;
+        }
+    }
+    // TODO: redundant?
+    maxi = std::min(maxi, imax);
+    return MoveResult(maxi, prev_NM, prev_NN);
+}
+
+bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData& state_data, int snpmax, int slide_threshold, bool freeze) {
+    // Initialization
     int m = s1.length();
     int n = s2.length();
-    int h_start = state_quintuple[0];
+    if (freeze && n == 0) { return true; }
+    // What is the imax_arr for?
+    std::vector<int> imax_arr;
+    imax_arr.reserve(m + n + 1);
+    fill_imax_arr(imax_arr, m, n);
+    // Why is this maxh?
+    int maxh = (2 * (m + n) + 1);
+    while ( (sd.h) < maxh) {
+        // Why do we store prev_lower and prev_upper?
+        int prev_lower_bound = sd.lower_bound;
+        int prev_upper_bound = sd.upper_bound;
+        int dstart;
+        // Find first diagonal to start on
+        if (sd.d_resume > 0) { 
+            dstart = sd.d_resume;
+            sd.d_resume = 0;
+        }
+        else {
+             dstart = std::max(-(h/2), lower_bound);
+        }
+        // Why is this dmax?
+        int dmax = std::min( (sd.h/2), sd.upper_bound) + 1;
+        for (int d = dstart; d < dmax; ++d) {
+            // Get diagonal index
+            int ld = m + d;
+            // Why? what is imax?
+            int imax = imax_arr[ld];
+            assert (ld >= 0);
+            assert (sd.lower_bound + m >= 0);
+            assert (sd.upper_bound + m <= m + n + 1);
+            assert (sd.L1[ld] < imax);
+            // Construct move result to hold maxi, prev_NM, prev_NN
+            MoveResult move_result = move_result();
+
+            // MOVE 1
+            if (sd.maxi_resume == 0) {
+                cal_move(move_result);
+            }
+            else { 
+                move_result = MoveResult(sd.maxi_resume, sd.NM2[ld], sd.NN2[ld]);
+                sd.maxi_resume = 0;
+            }
+            
+            // MOVE 2: slide
+            int sl, mn; 
+            // What is maxi vs imax??
+            if (move_result.maxi < imax) {
+                std::pair<int,int> res =  slide(d, move_result.maxi, s1, s2, imax);
+                sl = res.first; mn = res.second;
+                assert (sl <= imax);
+                move_result.prev_NM += (sl-maxi);
+                // heuristic abandonment
+                if (sl - move_result.maxi > slide_threshold) {
+                    if (sd.M2[ld] >= snpmax) { return false; }
+                }
+                move_result.prev_NN += mn;
+                sd.L2[ld] = sl;
+            }
+            else { sd.L2[ld] = move_result.maxi; }
+
+            sd.NM2[ld] = move_result.prev_NM;
+            sd.NN2[ld] = move_result.prev_NN;
+            assert(move_result.maxi <= imax);
+            assert(sd.L2[ld] <= imax);
+            //****
+                    
+            // FREEZE CHECK
+            if (freeze && d >= n-m) {
+                if (sd.L2[ld] == imax) {
+                    sd.freeze(prev_lower_bound, prev_upper_bound, d, maxi);
+                    return true;
+                }
+            }
+
+            // UPDATE BOUNDS
+            assert (sd.M2[ld] >= 0);
+            // Update bounds if hit imax
+            if (ld <= n && sd.L2[ld] >= imax) {
+                sd.lower_bound = d + 1;
+                assert (lower_bound + m >= 0);
+            }
+            if (ld > n && sd.L2[ld] >= imax) {
+                sd.upper_bound = d - 1;
+                assert (sd.upper_bound + m >= n);
+                assert (sd.upper_bound + m <= n + m + 1);
+                break;
+            } 
+            if (sd.L2[n] == m) {
+                return true;
+            }
+        }
+
+        // SWAP POINTERS
+        sd.swap_pointers();
+        sd.h += 1;
+    }
+    return true;
+}
+
+
+
+/*
+* Compute the diagonal dynamic programming matrix and auxiliaries.
+*
+* This program works in place on the inputted state.
+*/
+bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_quintuple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze) {
+
+    // load_state()
+    // Initialization and creating references into data; 
+    int m = s1.length();
+    int n = s2.length();
+    if (freeze && n == 0) { return true; }
     int lower_bound = state_quintuple[1];
     int upper_bound = state_quintuple[2];
     // the diagonal to resume on, at (h,d)
@@ -58,30 +202,30 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
     // Init L arrays
     auto L0 = state_arr;
     auto L1 = state_arr + rowsize;
-    auto L2 = state_arr + 2*rowsize;
+    auto L2 = state_arr + 2 * rowsize;
     // Init M arrays; number of mismatch operations
-    auto M0 = state_arr + 3*rowsize;
-    auto M1 = state_arr + 4*rowsize;
-    auto M2 = state_arr + 5*rowsize;
+    auto M0 = state_arr + 3 * rowsize;
+    auto M1 = state_arr + 4 * rowsize;
+    auto M2 = state_arr + 5 * rowsize;
     // Auxiliary arrays:
     // Init NM arrays; number of match operations
-    auto NM0 = state_arr + 6*rowsize;
-    auto NM1 = state_arr + 7*rowsize;
-    auto NM2 = state_arr + 8*rowsize;
+    auto NM0 = state_arr + 6 * rowsize;
+    auto NM1 = state_arr + 7 * rowsize;
+    auto NM2 = state_arr + 8 * rowsize;
     // Init NN arrays; number of `N' match operations
-    auto NN0 = state_arr + 9*rowsize;
-    auto NN1 = state_arr + 10*rowsize;
-    auto NN2 = state_arr + 11*rowsize;
+    auto NN0 = state_arr + 9 * rowsize;
+    auto NN1 = state_arr + 10 * rowsize;
+    auto NN2 = state_arr + 11 * rowsize;
+    // starting h
+    int h = state_quintuple[0];
 
-    if (freeze && n == 0) { return true; }
-
-    int h = h_start;
+    // What is the imax_arr for?
     std::vector<int> imax_arr;
-    imax_arr.reserve(m+n+1);
+    imax_arr.reserve(m + n + 1);
     fill_imax_arr(imax_arr, m, n);
-    while (h < 2*(m+n)+1) {
-//        cerrarr(L0,rowsize); cerrarr(L1,rowsize); cerrarr(L2,rowsize); 
-//        std::cerr << h << std::endl;
+    // Move calc to maxh
+    while ( h < (2 * (m + n) + 1) ) {
+        // Update the state
         state_quintuple[0] = h;
         int prev_lower_bound = lower_bound;
         int prev_upper_bound = upper_bound;
@@ -189,7 +333,7 @@ bool DistCalculator::calculate_dist(std::string s1, std::string s2, int* state_q
             }
         }
 
-        // Don't need to memcopy! Swap pointers;
+        // Swap the pointers! We only hold a few in memory
         L0 = L1;
         L1 = L2;
         M0 = M1;
