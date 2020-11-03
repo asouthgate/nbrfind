@@ -1,9 +1,16 @@
+#ifndef STATE_DATA_HPP
+#define STATE_DATA_HPP
+
 class StateData {
     public:
-        StateData(int* input_state_quintuple, int* input_state_arr);
+        StateData(int max_row_length);
+        ~StateData() { delete[] state_arr; }
         void freeze(int prev_lower_bound, int prev_upper_bound, int d, int maxi);
         void swap_pointers();
+        void init_state_array(int rowsize);
+        void init_state_quintuple(int len1, int len2);
         
+        int MAX_ROW_SIZE;
         // TODO: make private with public interface
         // Fundamental arrays used for calculations:
         // L is aln dist; M is n matches
@@ -13,13 +20,17 @@ class StateData {
         int* M0; int* M1; int* M2;
         int* NM0; int* NM1; int* NM2;
         int* NN0; int* NN1; int* NN2;
-        int& h;
-        int& lower_bound;
-        int& upper_bound;
-        int& d_resume;
-        int& maxi_resume;
+
+        int h;
+        int lower_bound;
+        int upper_bound;
+        int d_resume;
+        int maxi_resume;
+
+        int* state_arr;
+        int state_quintuple[5] = {0,0,0,0,0};
 
     private:
-        int* state_arr;
-        int* state_quintuple;
-}
+};
+
+#endif

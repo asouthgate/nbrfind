@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include <iostream>
+#include "sdata.hpp"
 #include "cluster.hpp"
 
 const size_t MIN_LENGTH = 29000;
@@ -14,19 +15,16 @@ struct MoveResult {
     int maxi = -1;
     int prev_NM = -1;
     int prev_NN = -1;
-}
+    bool success = true;
+};
 
 class DistCalculator {
 
     public:
         DistCalculator() {}
-        bool calculate_dist(std::string s1, std::string s2, int* state_triple, int* state_arr, int rowsize, int snpmax, int slide_threshold, bool freeze=false);
-        MoveResult calculate_dist_sd(std::string s1, std::string s2, StateData& state_data, int snpmax, int slide_threshold, bool freeze=false);
-
+        bool calculate_dist_sd(std::string s1, std::string s2, StateData& sd, int snpmax, int slide_threshold, bool freeze=false);
         void query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k=5, double epsilon = 0.5);
         std::vector<Cluster> get_clusters(const std::vector<std::pair<std::string,std::string>>& refs, int k, double epsilon);
 
     private:
-        void init_state_array(int* state_arr, int rowsize);
-        void init_state_quintuple(int* state_triple, int len1, int len2);
 };
