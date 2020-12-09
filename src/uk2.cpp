@@ -183,7 +183,7 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
 void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, double epsilon) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname, MIN_LENGTH, MAX_LENGTH);
     std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname, MIN_LENGTH, MAX_LENGTH);
-    StateData sd(MAX_LENGTH);
+    StateData sd(MAX_LENGTH*2 + 1);
     for (auto& p1 : queries) {
         for (auto& p2 : refs) {
             int rowsize = p1.second.length() + p2.second.length() + 1;

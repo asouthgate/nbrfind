@@ -24,8 +24,8 @@ class StateData {
         int h;
         int lower_bound;
         int upper_bound;
-        int d_resume;
-        int maxi_resume;
+        int d_resume = 0;
+        int maxi_resume = 0;
 
         int* state_arr;
         int state_quintuple[5] = {0,0,0,0,0};
