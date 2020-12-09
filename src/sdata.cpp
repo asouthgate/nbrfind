@@ -1,6 +1,42 @@
 #include "sdata.hpp"
 #include <assert.h>
 #include <cstring>
+#include <iostream>
+
+void StateData::print_debug() {
+    std::cerr << "h: " << h << std::endl;
+    print_arrays();
+    std::cerr << "lb: " << lower_bound << "ub: " << upper_bound << std::endl;
+    std::cerr << std::endl;
+
+}
+
+void StateData::print_arrays() {
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << L0[i] << " ";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << L1[i] << " ";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << L2[i] << " ";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << M0[i] << " ";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << M1[i] << " ";
+    }
+    std::cerr << std::endl;
+    for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+        std::cerr << M2[i] << " ";
+    }
+    std::cerr << std::endl;
+}
 
 StateData::StateData(int MAX_ROW_SIZE_) {
     MAX_ROW_SIZE = MAX_ROW_SIZE_;
@@ -35,27 +71,54 @@ void StateData::freeze(int prev_lower_bound, int prev_upper_bound, int d, int ma
 }
 
 void StateData::swap_pointers() {
+    // 0 <- 1
+    // 1 <- 2
+    // 2 <- 0 AND ENSURE NO MINUS 2S PRESENT IF h=0
+    int* tmp = L0;
     L0 = L1;
     L1 = L2;
+    L2 = tmp;
+    tmp = M0;
     M0 = M1;
     M1 = M2;
+    M2 = tmp;
+    tmp = NM0;
     NM0 = NM1;
     NM1 = NM2;
+    NM2 = tmp;
+    tmp = NN0;
     NN0 = NN1;
     NN1 = NN2;
+    NN2 = tmp;
+    if (h == 0) {
+        for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+            L2[i] = -1;
+        }
+    }
 }
 
-void StateData::init_state_array(int rowsize) {
-    for (int i = 0; i < rowsize; ++i) {
-        state_arr[i] = -2;
-    }
-    for (int i = rowsize; i < 3*rowsize; ++i) {
-        state_arr[i] = -1;
-    }
-    for (int i = 3*rowsize; i < 12*rowsize; ++i) {
-        state_arr[i] = 0;
-    }
+//void StateData::init_state_array(int rowsize) {
+//    for (int i = 0; i < rowsize; ++i) {
+//        state_arr[i] = -2;
+//    }
+//    for (int i = rowsize; i < 3*rowsize; ++i) {
+//        state_arr[i] = -1;
+//    }
+//    for (int i = 3*rowsize; i < 12*rowsize; ++i) {
+//        state_arr[i] = 0;
+//    }
+//
+//}
 
+void StateData::init_state_array(int rowsize) {
+    // Rowsize is the current amount of each array we will need to fill
+    for (int i = 0; i < rowsize; ++i) {
+        L0[i] = -2;
+        L1[i] = -1; L2[i] = -1;
+        M0[i] = 0; M1[i] = 0; M2[i] = 0;
+        NM0[i] = 0; NM1[i] = 0; NM2[i] = 0;
+        NN0[i] = 0; NN1[i] = 0; NN2[i] = 0;
+    }    
 }
 
 void StateData::init_state_quintuple(int len1, int len2) {
