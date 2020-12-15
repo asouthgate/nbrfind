@@ -110,15 +110,27 @@ void StateData::swap_pointers() {
 //
 //}
 
-void StateData::init_state_array(int rowsize) {
+void StateData::init_state_array(int rowsize, int m, int n) {
     // Rowsize is the current amount of each array we will need to fill
     for (int i = 0; i < rowsize; ++i) {
-        L0[i] = -1;
-        L1[i] = -1; L2[i] = -1;
+        L0[i] = 9;
+        L1[i] = 8; L2[i] = 7;
         M0[i] = 0; M1[i] = 0; M2[i] = 0;
         NM0[i] = 0; NM1[i] = 0; NM2[i] = 0;
         NN0[i] = 0; NN1[i] = 0; NN2[i] = 0;
     }    
+    L0[m] = -1;
+    L1[m] = -1;
+    L2[m] = -1;
+    L1[m-1] = -1;
+    L2[m-1] = -1;
+    L1[m+1] = -1;
+    L2[m+1] = -1;
+
+    L0[n] = -1;
+    L1[n] = -1;
+    L2[n] = -1;
+
 }
 
 void StateData::init_state_quintuple(int len1, int len2) {

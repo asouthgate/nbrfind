@@ -74,6 +74,7 @@ MoveResult cal_move(StateData& sd, const int& d, const int& ld, const int& m, co
         }
     }
     // TODO: redundant?
+//    std::cerr << "maxi: " << maxi << std::endl;
     maxi = std::min(maxi, imax);
 //    std::cerr << "maxi: " << maxi << std::endl;
     return MoveResult(maxi, prev_NM, prev_NN);
@@ -90,8 +91,8 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
     fill_imax_arr(imax_arr, m, n);
     // Why is this maxh?
     int maxh = (2 * (m + n) + 1);
+    
     while ((sd.h) < maxh) {
-//        sd.print_debug();
         // Why do we store prev_lower and prev_upper?
         int prev_lower_bound = sd.lower_bound;
         int prev_upper_bound = sd.upper_bound;
@@ -106,10 +107,34 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
         }
         // Why is this dmax?
         int dmax = std::min( (sd.h/2), sd.upper_bound) + 1;
-        assert (sd.lower_bound <= sd.upper_bound);
-//        std::cerr << dstart << " " << dmax << std::endl;
-//        assert (dstart < dmax);
+//        sd.print_debug();
+//        int negindl = m - (sd.h/2) - 1;
+//        int negindr = m + (sd.h/2) + 1;
+//        if (negindl >= 0) {sd.L0[negindl] = -1;}
+//        if (negindr < (m+n+1)) {sd.L0[negindr] = -1;}
+//        if (negindl >= -1) {
+//            if (sd.h % 2 == 0) { sd.L1[negindl + 1] = -1;}
+//        }
+//        if (negindr >= -1) {
+//            if (sd.h % 2 == 0) { sd.L1[negindr-1] = -1;}        
+//        }
+//        sd.L0[dstart-1] = -1;
+//        sd.L0[dmax] = -1;
+//        sd.L1[dstart-1] = -1;
+//        sd.L1[dmax] = -1;
+        sd.L2[m+dstart-1] = -1;
+        sd.L2[m+dmax] = -1;
+        sd.L2[m+dstart-2] = -1;
+        sd.L2[m+dmax+1] = -1;
+
+//        sd.L0[m] = -1;
+//        sd.L1[m] = -1;
+//        sd.L2[m] = -1;
+
+//        sd.print_debug();
+//        std::cerr << "dstart/end: " << dstart+m << " " << m+dmax << std::endl;
         for (int d = dstart; d < dmax; ++d) {
+            assert(m + d > 0);
 //            std::cerr << d << std::endl;
             // Get diagonal index
             int ld = m + d;
@@ -209,7 +234,7 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
         for (auto& p2 : refs) {
             int rowsize = p1.second.length() + p2.second.length() + 1;
             sd.init_state_quintuple(p1.second.length(), p2.second.length());
-            sd.init_state_array(rowsize);
+            sd.init_state_array(p1.second.length() + p2.second.length() + 1, p1.second.length(), p2.second.length());
             int n = p2.second.length();
             bool res = calculate_dist_sd(p1.second, p2.second, sd, k, 100, false);
             int total_h  = sd.h;
