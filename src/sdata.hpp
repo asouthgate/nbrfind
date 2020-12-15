@@ -8,6 +8,7 @@ class StateData {
         void freeze(int prev_lower_bound, int prev_upper_bound, int d, int maxi);
         void swap_pointers();
         void init_state_array(int rowsize);
+        void fast_init_state_array(int m, int n);
         void init_state_quintuple(int len1, int len2);
         void print_arrays();
         void print_debug();

@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <cstring>
 #include <iostream>
+#include <vector>
 
 void StateData::print_debug() {
     std::cerr << "h: " << h << std::endl;
@@ -60,6 +61,8 @@ StateData::StateData(int MAX_ROW_SIZE_) {
     NN0 = state_arr + 9 * MAX_ROW_SIZE;
     NN1 = state_arr + 10 * MAX_ROW_SIZE;
     NN2 = state_arr + 11 * MAX_ROW_SIZE;
+
+    init_state_array(MAX_ROW_SIZE);
 }
 
 void StateData::freeze(int prev_lower_bound, int prev_upper_bound, int d, int maxi) {
@@ -110,27 +113,25 @@ void StateData::swap_pointers() {
 //
 //}
 
-void StateData::init_state_array(int rowsize, int m, int n) {
+void StateData::init_state_array(int rowsize) {
     // Rowsize is the current amount of each array we will need to fill
     for (int i = 0; i < rowsize; ++i) {
-        L0[i] = 9;
-        L1[i] = 8; L2[i] = 7;
+        L0[i] = -1;
+        L1[i] = -1; L2[i] = -1;
         M0[i] = 0; M1[i] = 0; M2[i] = 0;
         NM0[i] = 0; NM1[i] = 0; NM2[i] = 0;
         NN0[i] = 0; NN1[i] = 0; NN2[i] = 0;
     }    
-    L0[m] = -1;
-    L1[m] = -1;
-    L2[m] = -1;
-    L1[m-1] = -1;
-    L2[m-1] = -1;
-    L1[m+1] = -1;
-    L2[m+1] = -1;
+}
 
-    L0[n] = -1;
-    L1[n] = -1;
-    L2[n] = -1;
-
+void StateData::fast_init_state_array(int m, int n) {
+    std::vector<int> vals = {m, n, m-1, m+1};
+    for (auto& v : vals) {
+        L0[v] = -1; L1[v] = -1; L2[v] = -1;
+        M0[v] = 0; M1[v] = 0; M2[v] = 0;
+        NN0[v] = 0; NN1[v] = 0; NN2[v] = 0;
+        NM0[v] = 0; NM1[v] = 0; NM2[v] = 0;
+    }
 }
 
 void StateData::init_state_quintuple(int len1, int len2) {

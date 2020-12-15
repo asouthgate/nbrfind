@@ -1,7 +1,7 @@
 import sys
 import subprocess as sp
-import ukkonen2 as uk2
 from Bio import SeqIO
+from Bio import pairwise2
 import sys
 
 queries = [r for r in SeqIO.parse(sys.argv[1], "fasta")]
@@ -25,14 +25,14 @@ failures = []
 for q in queries:
     for r in recs:
         key = ">" + q.description + ">" + r.description
-        res = uk2.ukkonen_lev2(q, r)
-        snpd, h = res
+        h = -1*pairwise2.align.globalms(str(q.seq), str(r.seq), 0, -1, -2, -2, score_only=True)
         prevres = resd[key]
-        print(res, prevres)
-        if prevres[0] != h or prevres[1] != snpd:
+        print(h, prevres)
+        if prevres[0] != h:
             failures.append(key)
             sys.stderr.write("Failed: %s\n" % key)
 
 print("FAILURES")
 print(failures)
+print(len(failures))
 

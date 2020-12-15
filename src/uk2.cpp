@@ -127,6 +127,12 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
         sd.L2[m+dstart-2] = -1;
         sd.L2[m+dmax+1] = -1;
 
+        sd.M2[m+dstart-1] = 0;
+        sd.M2[m+dmax] = 0;
+        sd.M2[m+dstart-2] = 0;
+        sd.M2[m+dmax+1] = 0;
+
+
 //        sd.L0[m] = -1;
 //        sd.L1[m] = -1;
 //        sd.L2[m] = -1;
@@ -234,7 +240,8 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
         for (auto& p2 : refs) {
             int rowsize = p1.second.length() + p2.second.length() + 1;
             sd.init_state_quintuple(p1.second.length(), p2.second.length());
-            sd.init_state_array(p1.second.length() + p2.second.length() + 1, p1.second.length(), p2.second.length());
+            // fast init the state data
+            sd.fast_init_state_array(p1.second.length(), p2.second.length());
             int n = p2.second.length();
             bool res = calculate_dist_sd(p1.second, p2.second, sd, k, 100, false);
             int total_h  = sd.h;
