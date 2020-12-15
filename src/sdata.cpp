@@ -90,11 +90,11 @@ void StateData::swap_pointers() {
     NN0 = NN1;
     NN1 = NN2;
     NN2 = tmp;
-    if (h == 0) {
-        for (int i = 0; i < MAX_ROW_SIZE; ++i) {
-            L2[i] = -1;
-        }
-    }
+//    if (h == 0) {
+//        for (int i = 0; i < MAX_ROW_SIZE; ++i) {
+//            L2[i] = -1;
+//        }
+//    }
 }
 
 //void StateData::init_state_array(int rowsize) {
@@ -113,7 +113,7 @@ void StateData::swap_pointers() {
 void StateData::init_state_array(int rowsize) {
     // Rowsize is the current amount of each array we will need to fill
     for (int i = 0; i < rowsize; ++i) {
-        L0[i] = -2;
+        L0[i] = -1;
         L1[i] = -1; L2[i] = -1;
         M0[i] = 0; M1[i] = 0; M2[i] = 0;
         NM0[i] = 0; NM1[i] = 0; NM2[i] = 0;
