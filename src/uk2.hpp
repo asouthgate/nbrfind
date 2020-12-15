@@ -12,10 +12,13 @@ const size_t MAX_ROW_SIZE = 2* MAX_LENGTH + 1;
 struct MoveResult {
     MoveResult(int maxi_, int prev_NM_, int prev_NN_) : maxi(maxi_), prev_NM(prev_NM_), prev_NN(prev_NN_) {}
     MoveResult() {}
+    // Index of the optimal move
     int maxi = -1;
+    // Defining the previous number of N-X mismatches and number of N-N matches
     int prev_NM = -1;
     int prev_NN = -1;
-    bool success = true;
+    // Success - unnecessary
+//    bool success = true;
 };
 
 class DistCalculator {
