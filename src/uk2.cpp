@@ -42,7 +42,6 @@ void fill_imax_arr(std::vector<int> & v, int m, int n) {
     }
 }
 
-
 MoveResult cal_move(StateData& sd, const int& d, const int& ld, const int& m, const int& n, const int& imax) {
     int lmove = sd.L0[ld-1];
     int matchmove = std::min(sd.L1[ld] + 1, imax);
@@ -107,6 +106,9 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
         }
         // Why is this dmax?
         int dmax = std::min( (sd.h/2), sd.upper_bound) + 1;
+        assert (sd.lower_bound <= sd.upper_bound);
+//        std::cerr << dstart << " " << dmax << std::endl;
+//        assert (dstart < dmax);
         for (int d = dstart; d < dmax; ++d) {
 //            std::cerr << d << std::endl;
             // Get diagonal index
@@ -131,17 +133,20 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
             }
             
             // MOVE 2: slide
-            int sl, mn; 
+            int sl, ns; 
+            bool collapse_bounds = false;
             if (move_result.maxi < imax) {
                 std::pair<int,int> res =  slide(d, move_result.maxi, s1, s2, imax);
-                sl = res.first; mn = res.second;
+                sl = res.first; ns = res.second;
                 assert (sl <= imax);
                 move_result.prev_NM += (sl-move_result.maxi);
-                // heuristic abandonment
-                if (sl - move_result.maxi > slide_threshold) {
+                // heuristic abandonment and heuristic re-shrinkage
+                if (sl - move_result.maxi - ns > slide_threshold) {
+                    // If a big slide has too big snpmax, bail
                     if (sd.M2[ld] >= snpmax) { return false; }
+                    // TODO: exit no matter what; make decision after; can restart
                 }
-                move_result.prev_NN += mn;
+                move_result.prev_NN += ns;
                 sd.L2[ld] = sl;
             }
             else { sd.L2[ld] = move_result.maxi; }
@@ -162,6 +167,7 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
 
             // UPDATE BOUNDS
             assert (sd.M2[ld] >= 0);
+
             // Update bounds if hit imax
             if (ld <= n && sd.L2[ld] >= imax) {
                 sd.lower_bound = d + 1;
@@ -173,6 +179,7 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
                 assert (sd.upper_bound + m <= n + m + 1);
                 break;
             } 
+
             if (sd.L2[n] == m) {
                 return true;
             }
