@@ -197,76 +197,18 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
         max_seq_len = std::max(max_seq_len, queries[si].second.length());
     }
     std::cerr << "Maximum sequence length " << max_seq_len << std::endl;
+    StateData sd(max_seq_len*2 + 1);
     for (auto& p1 : queries) {
-        std::vector<long> startposs = {0};
-        std::vector<std::string> descriptions = {"foo"};
-        sparseSA spsa = sparseSA(p1.second, descriptions, startposs, false, 1);
         for (auto& p2 : refs) {
-
-            std::vector<match_t> matches;
-            spsa.findMAM(p2.second, matches, 50, false);
-            int total_h = 0;
-            int total_mm = 0;
-            int total_nm = 0;
-            int total_nn = 0; 
-            int posi = 0;
-            int posj = 0;
-//            std::cout << "WAT" << std::endl;
-            for (auto& match_t : matches) {
-                int mi = match_t.ref;
-                int mj = match_t.query;
-                int li = mi-posi;
-                int lj = mj-posj;
-                std::cout << std::endl;
-                std::cout << "mi0 " << mi << " " << mj << std::endl;
-                std::cout << "min " << mi + match_t.len << " " << mj + match_t.len << std::endl;
-                std::cout << "pos0 " << posi << " " << posj << std::endl;
-                std::cout << "posn " << posi + li << " " << posj + lj << std::endl;
-
-                // If there is nothing there, just continue
-                if (li + lj == 0) { continue; 
-                    posi = mi + match_t.len -1;
-                    posj = mj + match_t.len -1;
-                }
-                assert(posi+li <= p1.second.length());
-                assert(posj+lj <= p2.second.length());
-                std::string to_aln_Si = p1.second.substr(posi, li);
-                std::string to_aln_Sj = p2.second.substr(posj, lj);
-                std::cout << to_aln_Si.length() << " " << to_aln_Sj.length() << std::endl;
-                
-                int rowsize = to_aln_Si.length() + to_aln_Sj.length() + 1;
-                max_seq_len = std::max(to_aln_Si.length(), to_aln_Sj.length());
-                StateData sd(max_seq_len*2 + 1);
-                sd.init_state_quintuple(to_aln_Si.length(), to_aln_Sj.length());
-                sd.init_state_array(rowsize);
-                int n = to_aln_Sj.length();
-                bool res = calculate_dist_sd(to_aln_Si, to_aln_Sj, sd, k, 100, false);
-//            double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], k);
-                total_h += sd.h;
-                total_mm += sd.M2[n];
-                total_nm += sd.NM2[n];
-                total_nn += sd.NN2[n];
-                posi = mi + match_t.len -1;
-                posj = mj + match_t.len -1;
-            }
-            int li = p1.second.length() - posi;
-            int lj = p2.second.length() - posj;
-            std::string to_aln_Si = p1.second.substr(posi, li);
-            std::string to_aln_Sj = p2.second.substr(posj, lj);
-            
-            int rowsize = to_aln_Si.length() + to_aln_Sj.length() + 1;
-            max_seq_len = std::max(to_aln_Si.length(), to_aln_Sj.length());
-            StateData sd(max_seq_len*2 + 1);
-            sd.init_state_quintuple(to_aln_Si.length(), to_aln_Sj.length());
+            int rowsize = p1.second.length() + p2.second.length() + 1;
+            sd.init_state_quintuple(p1.second.length(), p2.second.length());
             sd.init_state_array(rowsize);
-            int n = to_aln_Sj.length();
-            bool res = calculate_dist_sd(to_aln_Si, to_aln_Sj, sd, k, 100, false);
-//            double p = betap(state_arr[mm_ind], state_arr[NM_ind], state_arr[NN_ind], k);
-            total_h += sd.h;
-            total_mm += sd.M2[n];
-            total_nm += sd.NM2[n];
-            total_nn += sd.NN2[n];
- 
+            int n = p2.second.length();
+            bool res = calculate_dist_sd(p1.second, p2.second, sd, k, 100, false);
+            int total_h  = sd.h;
+            int total_mm = sd.M2[n];
+            int total_nm = sd.NM2[n];
+            int total_nn = sd.NN2[n]; 
             // Need to do final match with end 
             std::cout << p1.first << "," << p2.first << "," << total_h << "," << total_mm << "," << total_nm << "," << total_nn << std::endl;
         }
