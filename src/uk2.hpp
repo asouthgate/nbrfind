@@ -2,12 +2,20 @@
 #include <string>
 #include <utility>
 #include <iostream>
+#include "sparseMEM_src/sparseSA.hpp"
 #include "sdata.hpp"
 #include "cluster.hpp"
 
 const size_t MIN_LENGTH = 29000;
 const size_t MAX_LENGTH = 31000;
 const size_t MAX_ROW_SIZE = 2* MAX_LENGTH + 1;
+
+struct unalignedSegment {
+    int i_start = -1;
+    int i_end = -1;
+    int j_start = -1;
+    int j_end = -1; 
+};
 
 struct MoveResult {
     MoveResult(int maxi_, int prev_NM_, int prev_NN_) : maxi(maxi_), prev_NM(prev_NM_), prev_NN(prev_NN_) {}
@@ -21,12 +29,14 @@ struct MoveResult {
 //    bool success = true;
 };
 
+std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, int m, int n);
+
 class DistCalculator {
 
     public:
         DistCalculator() {}
         bool calculate_dist_sd(std::string s1, std::string s2, StateData& sd, int snpmax, int slide_threshold, bool freeze=false);
-        void query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k=5, double epsilon = 0.5);
+        void query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k=5, int max_slide=100, double epsilon = 0.5);
         std::vector<Cluster> get_clusters(const std::vector<std::pair<std::string,std::string>>& refs, int k, double epsilon);
 
     private:

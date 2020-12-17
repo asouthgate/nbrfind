@@ -91,8 +91,9 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
     fill_imax_arr(imax_arr, m, n);
     // Why is this maxh?
     int maxh = (2 * (m + n) + 1);
-    
-    while ((sd.h) < maxh) {
+    int h_eff = sd.h; 
+    int d0 = 0;
+    while ((h_eff) < maxh) {
         // Why do we store prev_lower and prev_upper?
         int prev_lower_bound = sd.lower_bound;
         int prev_upper_bound = sd.upper_bound;
@@ -103,25 +104,11 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
             sd.d_resume = 0;
         }
         else {
-             dstart = std::max(-(sd.h/2), sd.lower_bound);
+             dstart = std::max(d0-(h_eff/2), sd.lower_bound);
         }
         // Why is this dmax?
-        int dmax = std::min( (sd.h/2), sd.upper_bound) + 1;
-//        sd.print_debug();
-//        int negindl = m - (sd.h/2) - 1;
-//        int negindr = m + (sd.h/2) + 1;
-//        if (negindl >= 0) {sd.L0[negindl] = -1;}
-//        if (negindr < (m+n+1)) {sd.L0[negindr] = -1;}
-//        if (negindl >= -1) {
-//            if (sd.h % 2 == 0) { sd.L1[negindl + 1] = -1;}
-//        }
-//        if (negindr >= -1) {
-//            if (sd.h % 2 == 0) { sd.L1[negindr-1] = -1;}        
-//        }
-//        sd.L0[dstart-1] = -1;
-//        sd.L0[dmax] = -1;
-//        sd.L1[dstart-1] = -1;
-//        sd.L1[dmax] = -1;
+        int dmax = std::min(d0+(h_eff/2), sd.upper_bound) + 1;
+
         sd.L2[m+dstart-1] = -1;
         sd.L2[m+dmax] = -1;
         sd.L2[m+dstart-2] = -1;
@@ -131,11 +118,6 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
         sd.M2[m+dmax] = 0;
         sd.M2[m+dstart-2] = 0;
         sd.M2[m+dmax+1] = 0;
-
-
-//        sd.L0[m] = -1;
-//        sd.L1[m] = -1;
-//        sd.L2[m] = -1;
 
 //        sd.print_debug();
 //        std::cerr << "dstart/end: " << dstart+m << " " << m+dmax << std::endl;
@@ -176,6 +158,8 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
                     // If a big slide has too big snpmax, bail
                     if (sd.M2[ld] >= snpmax) { return false; }
                     // TODO: exit no matter what; make decision after; can restart
+                    h_eff = 0;
+                    d0 = d;
                 }
                 move_result.prev_NN += ns;
                 sd.L2[ld] = sl;
@@ -219,12 +203,44 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
 
         // SWAP POINTERS
         sd.swap_pointers();
+        h_eff += 1;
         sd.h += 1;
     }
     return true;
 }
 
-void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, double epsilon) {
+/**
+* extract indices for non-matching segments
+*
+* @param matches the vector of matches.
+* @param m the length of the first string.
+* @param n the length of the second string
+* @return a sequence of unalignedSegment
+*/
+std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, int m, int n) {
+    std::vector<unalignedSegment> results;
+    int prev_i = 0;
+    int prev_j = 0;
+    for (match_t& m : matches) {
+        assert(m.ref > prev_i);
+        assert(m.query > prev_j);
+        int i = m.ref + m.len;  
+        int j = m.query + m.len;
+        unalignedSegment us;
+        us.i_start = prev_i; us.i_end = i;
+        us.j_start = prev_j; us.j_end = j;
+        results.push_back(us);
+        prev_i = i + 1;
+        prev_j = j + 1;
+    }
+    unalignedSegment us;
+    us.i_start = prev_i; us.i_end = m;
+    us.j_start = prev_j; us.j_end = n;   
+    results.push_back(us);
+    return results;
+}
+
+void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, int max_slide, double epsilon) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname, MIN_LENGTH, MAX_LENGTH);
     std::vector<std::pair<std::string, std::string>> refs = read_fasta(ref_fasta_fname, MIN_LENGTH, MAX_LENGTH);
     size_t max_seq_len = 0;
@@ -237,13 +253,21 @@ void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, 
     std::cerr << "Maximum sequence length " << max_seq_len << std::endl;
     StateData sd(max_seq_len*2 + 1);
     for (auto& p1 : queries) {
+        // Sparse SA 
+        std::vector<long> startposs = {0};
+        std::vector<std::string> descriptions = {"foo"};
+        sparseSA spsa = sparseSA(p1.second, descriptions, startposs, false, 1);
         for (auto& p2 : refs) {
+            // Get MUMs
+            std::vector<match_t> matches;
+            spsa.MUM(p2.second, matches, 20, false);
+
             int rowsize = p1.second.length() + p2.second.length() + 1;
             sd.init_state_quintuple(p1.second.length(), p2.second.length());
             // fast init the state data
             sd.fast_init_state_array(p1.second.length(), p2.second.length());
             int n = p2.second.length();
-            bool res = calculate_dist_sd(p1.second, p2.second, sd, k, 100, false);
+            bool res = calculate_dist_sd(p1.second, p2.second, sd, k, max_slide, false);
             int total_h  = sd.h;
             int total_mm = sd.M2[n];
             int total_nm = sd.NM2[n];
