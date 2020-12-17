@@ -1,4 +1,4 @@
-add_library(uk2 SHARED uk2.cpp probfunc.cpp seqio.cpp sdata.cpp)
+add_library(uk2 SHARED uk2.cpp probfunc.cpp seqio.cpp sdata.cpp sparseMEM_src/qsufsort.c sparseMEM_src/sparseSA.hpp sparseMEM_src/sparseSA.cpp)
 
 add_library(uk2wrap SHARED uk2wrap.cpp)
 
