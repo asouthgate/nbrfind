@@ -8,6 +8,7 @@
 #include <cstring>
 #include <fstream>
 #include <set>
+#include <tuple>
 #include "sparseMEM_src/sparseSA.hpp"
 #include "uk2.hpp"
 #include "probfunc.hpp"
@@ -84,7 +85,19 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
     // Initialization
     int m = s1.length();
     int n = s2.length();
-    if (freeze && n == 0) { return true; }
+    if (m == 0 && n > 0) {
+        // If it's zero length, bail early
+        sd.h = n;
+        return true;
+    }
+    if (n == 0 && m > 0) {
+        sd.h = m; 
+        return true;
+    }
+    if (n == 0 && m == 0) {
+        sd.h = 0;
+        return true;
+    }
     // What is the imax_arr for?
     std::vector<int> imax_arr;
     imax_arr.reserve(m + n + 1);
@@ -217,18 +230,31 @@ bool DistCalculator::calculate_dist_sd(std::string s1, std::string s2, StateData
 * @param n the length of the second string
 * @return a sequence of unalignedSegment
 */
-std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, int m, int n) {
+std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, std::string S, int m, int n) {
     std::vector<unalignedSegment> results;
     int prev_i = 0;
     int prev_j = 0;
     for (match_t& m : matches) {
-        assert(m.ref > prev_i);
-        assert(m.query > prev_j);
+        // Ignore and bits with Ns
+        std::cerr << "match " << m.ref << " " << m.query << " " << m.len << std::endl;;
+        bool ncheck = false;
+        for (int i = m.ref; i < m.ref + m.len; ++i) {
+            if (S[i] == 'N') { std::cerr << "Ns" << std::endl; ncheck = true; break; }
+        }
+        if (ncheck) { continue; }
+        std::cerr << m.ref << " " << prev_i << std::endl;
+        std::cerr << m.query << " " << prev_j <<  std::endl;
+        if (prev_i > 0) {
+            assert(m.ref >= prev_i);
+        }
+        if (prev_j > 0) {
+            assert(m.query >= prev_j);
+        }
         int i = m.ref + m.len;  
         int j = m.query + m.len;
         unalignedSegment us;
-        us.i_start = prev_i; us.i_end = i;
-        us.j_start = prev_j; us.j_end = j;
+        us.i_start = prev_i; us.i_end = i + 1;
+        us.j_start = prev_j; us.j_end = j + 1;
         results.push_back(us);
         prev_i = i + 1;
         prev_j = j + 1;
@@ -239,6 +265,50 @@ std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> ma
     results.push_back(us);
     return results;
 }
+
+std::tuple<int,int,int,int> DistCalculator::align2seqs_mem(StateData& sd, sparseSA& spsa, std::string& s1, std::string& s2, int k, int max_slide) {
+    std::vector<match_t> matches;
+    spsa.MUM(s2, matches, 100, false);
+    std::vector<unalignedSegment> uasegs = extract_unmatched_segments(matches, s1, s1.length(), s2.length());
+    int total_h = 0;
+    int total_m = 0;
+    int total_nm = 0;
+    int total_nn = 0;
+    for (unalignedSegment& uas : uasegs) {
+        std::cerr << uas.i_start << " " << uas.i_end << std::endl;
+        std::cerr << uas.j_start << " " << uas.j_end << std::endl;
+        std::string p1 = s1.substr(uas.i_start, uas.i_end-uas.i_start);
+        std::string p2 = s2.substr(uas.j_start, uas.j_end-uas.j_start);
+        int n = p2.length();
+        sd.init_state_quintuple(p1.length(), p2.length());
+        // fast init the state data
+        sd.fast_init_state_array(p1.length(), p2.length());
+        bool res = calculate_dist_sd(p1, p2, sd, k, max_slide, false);
+        total_h += sd.h;
+        total_m += sd.M2[n];
+        total_nm += sd.NM2[n];
+        total_nn += sd.NN2[n];
+    }
+    return std::tuple<int, int, int, int>(total_h, total_m, total_nm, total_nn);
+}
+
+std::tuple<int,int,int,int> DistCalculator::align2seqs(StateData& sd, std::string& p1, std::string& p2, int k, int max_slide) {
+    int total_h = 0;
+    int total_m = 0;
+    int total_nm = 0;
+    int total_nn = 0;
+    sd.init_state_quintuple(p1.length(), p2.length());
+    // fast init the state data
+    sd.fast_init_state_array(p1.length(), p2.length());
+    bool res = calculate_dist_sd(p1, p2, sd, k, max_slide, false);
+    int n = p2.length();
+    total_h += sd.h;
+    total_m += sd.M2[n];
+    total_nm += sd.NM2[n];
+    total_nn += sd.NN2[n];
+    return std::tuple<int, int, int, int>(total_h, total_m, total_nm, total_nn);
+}
+
 
 void DistCalculator::query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k, int max_slide, double epsilon) {
     std::vector<std::pair<std::string, std::string>> queries = read_fasta(sample_fasta_fname, MIN_LENGTH, MAX_LENGTH);
