@@ -29,15 +29,19 @@ struct MoveResult {
 //    bool success = true;
 };
 
-std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, int m, int n);
+std::vector<unalignedSegment> extract_unmatched_segments(std::vector<match_t> matches, std::string S, int m, int n);
+
 
 class DistCalculator {
-
     public:
         DistCalculator() {}
         bool calculate_dist_sd(std::string s1, std::string s2, StateData& sd, int snpmax, int slide_threshold, bool freeze=false);
         void query_samples_against_refs(std::string sample_fasta_fname, std::string ref_fasta_fname, int k=5, int max_slide=100, double epsilon = 0.5);
         std::vector<Cluster> get_clusters(const std::vector<std::pair<std::string,std::string>>& refs, int k, double epsilon);
+
+        std::tuple<int,int,int,int> align2seqs_mem(StateData& sd, sparseSA& spsa, std::string& p1, std::string& p2, int k, int max_slide);
+
+        std::tuple<int,int,int,int> align2seqs(StateData& sd, std::string& p1, std::string& p2, int k, int max_slide);
 
     private:
 };
