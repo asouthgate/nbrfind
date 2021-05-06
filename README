@@ -1,3 +1,5 @@
+Fast genome alignment/SNP distance calculation with modified version of diagonal transition algorithm for aligning 2 strings.
+
 mkdir build
 cd build
 cmake ..
