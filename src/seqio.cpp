@@ -6,6 +6,22 @@
 #include <vector>
 #include "seqio.hpp"
 
+std::pair<std::vector<int>, std::string> strip_Ns(std::string& S) {
+    std::string resS  = "";
+    std::vector<int> resinds;
+    for (int i = 0; i < S.length(); ++i) {
+        if (S[i] != 'N') {
+            resinds.push_back(i);
+            resS += S[i];
+        }
+        else if (i > 0 && S[i-1] !='N')  {
+            resS += "!";
+            resinds.push_back(-1);            
+        }
+    }
+    return std::pair<std::vector<int>, std::string>(resinds, resS);
+}
+
 std::vector<std::pair<std::string, std::string>> read_fasta(std::string fasta_fname, int min_len, int max_len) {
     std::cerr << "Reading " << fasta_fname << std::endl;
     std::vector<std::pair<std::string,std::string>> records;
@@ -20,13 +36,13 @@ std::vector<std::pair<std::string, std::string>> read_fasta(std::string fasta_fn
         l.erase(std::remove(l.begin(), l.end(), '\r'), l.end());
         if (l[0] == '>') {
             if (c > 0) {
-                std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
-               [](unsigned char c){ return std::toupper(c); });
-                convert_nonstandard_to_N(curr_str);
-                bool cds = trim_to_cds(curr_str);
-                if (cds && filter(curr_str, min_len, max_len)) {
-                    records.push_back(std::pair<std::string,std::string>(curr_h, curr_str));
-                }
+//                std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
+//               [](unsigned char c){ return std::toupper(c); });
+//                convert_nonstandard_to_N(curr_str);
+//                bool cds = trim_to_cds(curr_str);
+//                if (cds && filter(curr_str, min_len, max_len)) {
+                records.push_back(std::pair<std::string,std::string>(curr_h, curr_str));
+//                }
                 rec_counter += 1;
             }
             curr_h = l;
@@ -38,14 +54,14 @@ std::vector<std::pair<std::string, std::string>> read_fasta(std::string fasta_fn
         c += 1;
     }
     rec_counter += 1;
-    std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
-           [](unsigned char c){ return std::toupper(c); });
-    convert_nonstandard_to_N(curr_str);
-    bool cds = trim_to_cds(curr_str);
-    if (cds && filter(curr_str, min_len, max_len)) {
-        std::pair<std::string,std::string> record(curr_h, curr_str);
-        records.push_back(record);
-    }
+//    std::transform(curr_str.begin(), curr_str.end(), curr_str.begin(),
+//           [](unsigned char c){ return std::toupper(c); });
+//    convert_nonstandard_to_N(curr_str);
+//    bool cds = trim_to_cds(curr_str);
+//    if (cds && filter(curr_str, min_len, max_len)) {
+    std::pair<std::string,std::string> record(curr_h, curr_str);
+    records.push_back(record);
+//    }
     std::cerr << "Excluded " << rec_counter-records.size() << " of " << records.size() << " records due to filter..." << std::endl;
     return records;
 }

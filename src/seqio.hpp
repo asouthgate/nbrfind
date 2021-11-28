@@ -12,3 +12,5 @@ bool filter(const std::string& s, int min_length, int max_length);
 
 std::vector<std::pair<std::string, std::string>> read_fasta(std::string fasta_fname, int min_len, int max_len);
 
+std::pair<std::vector<int>, std::string> strip_Ns(std::string& S);
+

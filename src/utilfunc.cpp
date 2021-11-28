@@ -25,4 +25,3 @@ void cerrarr(int* v, int rowsize) {
     std::cerr << std::endl;
 }
 
-
